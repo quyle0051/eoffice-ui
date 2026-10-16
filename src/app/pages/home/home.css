@@ -1,0 +1,12 @@
+.home {
+    padding: 40px;
+}
+
+button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #b3261e;
+    color: #fff;
+    cursor: pointer;
+}

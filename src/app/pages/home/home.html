@@ -1,0 +1,7 @@
+<div class="home">
+  @if (user(); as u) {
+    <h2>Xin chào, {{ u.email }}</h2>
+    <p>Vai trò: {{ u.roles.join(', ') }}</p>
+    <button (click)="logout()">Đăng xuất</button>
+  }
+</div>
