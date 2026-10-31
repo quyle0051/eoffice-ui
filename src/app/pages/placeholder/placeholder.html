@@ -1,0 +1,17 @@
+<div class="page-header">
+  <h2>{{ title() }}</h2>
+  <div class="breadcrumb">
+    <a routerLink="/home">Tổng quan</a>
+    @if (group()) {
+      <span>/</span>
+      <span>{{ group() }}</span>
+    }
+    <span>/</span>
+    <span class="current">{{ title() }}</span>
+  </div>
+</div>
+
+<div class="card">
+  <p class="empty-title">Chức năng đang được xây dựng</p>
+  <p class="empty-hint">Màn hình "{{ title() }}" sẽ hiển thị tại đây.</p>
+</div>

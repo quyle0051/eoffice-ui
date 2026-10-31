@@ -1,0 +1,414 @@
+<div class="page-header">
+  <h2>Phân phối &amp; Giao việc xử lý văn bản đến</h2>
+  <div class="breadcrumb">
+    <a routerLink="/home">Tổng quan</a>
+    <span>/</span>
+    <a routerLink="/documents/incoming">Văn bản đến</a>
+    <span>/</span>
+    <span class="current">Phân phối văn bản</span>
+  </div>
+</div>
+
+@if (errorMessage()) {
+  <div class="alert-error">{{ errorMessage() }}</div>
+}
+
+@if (doc(); as d) {
+  <div class="doc-summary-bar">
+    <div>
+      <strong>Số đến {{ d.arrivalNumber }}:</strong> {{ d.documentTypeName }} - {{ d.subject }}
+    </div>
+    @if (d.traceHeaderList) {
+      <div class="trace-preview">
+        <strong>Ý kiến chỉ đạo của Lãnh đạo:</strong>
+        <pre>{{ d.traceHeaderList }}</pre>
+      </div>
+    }
+  </div>
+}
+
+<div class="dispatch-container">
+  <!-- KHUNG 1: NGƯỜI CHỦ TRÌ (1 NGƯỜI) -->
+  <div class="selector-block">
+    <div class="selector-header">
+      <span class="selector-title">Người chủ trì (Chọn 1 người)</span>
+      <span class="divider">|</span>
+      <button type="button" class="btn-lookup" (click)="openPicker('MAIN')">
+        Tìm nâng cao &#128269;
+      </button>
+    </div>
+    <div class="chip-box" (click)="openPicker('MAIN')">
+      @for (row of mainRows(); track row.key) {
+        <span class="chip" (click)="$event.stopPropagation()">
+          {{ row.targetLabel }}
+          <button type="button" class="chip-remove" (click)="removeRow(row.key)">&times;</button>
+        </span>
+      }
+      <div class="chip-placeholder">Chọn người xử lý chính (Trưởng/Phó phòng, Ban Giám đốc)</div>
+    </div>
+  </div>
+
+  <!-- KHUNG 2: NGƯỜI GIÁM SÁT (CHỌN NHIỀU) -->
+  <div class="selector-block">
+    <div class="selector-header">
+      <span class="selector-title">Người giám sát (Chọn nhiều)</span>
+      <span class="divider">|</span>
+      <button type="button" class="btn-lookup" (click)="openPicker('SUPERVISOR')">
+        Tìm nâng cao &#128269;
+      </button>
+    </div>
+    <div class="chip-box" (click)="openPicker('SUPERVISOR')">
+      @for (row of supervisorRows(); track row.key) {
+        <span class="chip" (click)="$event.stopPropagation()">
+          {{ row.targetLabel }}
+          <button type="button" class="chip-remove" (click)="removeRow(row.key)">&times;</button>
+        </span>
+      }
+      <div class="chip-placeholder">Chọn người giám sát, theo dõi tiến độ</div>
+    </div>
+  </div>
+
+  <!-- KHUNG 3: PHÒNG BAN / NHÓM CÔNG VIỆC / NGƯỜI HỖ TRỢ (CHỌN NHIỀU) -->
+  <div class="selector-block">
+    <div class="selector-header">
+      <span class="selector-title">Phòng ban / Nhóm công việc / Người hỗ trợ</span>
+      <span class="divider">|</span>
+      <button type="button" class="btn-lookup" (click)="openPicker('SUPPORT')">
+        Tìm nâng cao &#128269;
+      </button>
+    </div>
+    <div class="chip-box" (click)="openPicker('SUPPORT')">
+      @for (row of supportRows(); track row.key) {
+        <span class="chip" (click)="$event.stopPropagation()">
+          {{ row.targetLabel }}
+          <button type="button" class="chip-remove" (click)="removeRow(row.key)">&times;</button>
+        </span>
+      }
+      <div class="chip-placeholder">
+        Chọn phòng ban (Trưởng/Phó phòng), nhóm công việc hoặc cá nhân phối hợp hỗ trợ
+      </div>
+    </div>
+  </div>
+
+  <!-- BẢNG TỔNG HỢP PHÂN PHỐI PHÍA DƯỚI (GIỐNG HÌNH MẪU + XEM THÀNH VIÊN NHÓM/PHÒNG BAN) -->
+  <div class="table-section">
+    <table class="dispatch-table">
+      <thead>
+        <tr>
+          <th style="width: 50px">STT</th>
+          <th>Người nhận / Phòng ban / Nhóm công việc</th>
+          <th style="width: 110px">Số, ký hiệu</th>
+          <th style="width: 120px">Vai trò</th>
+          <th style="width: 130px">Mức độ</th>
+          <th style="width: 150px">Hạn xử lý</th>
+          <th style="width: 220px">Ghi chú</th>
+          <th style="width: 100px">Trạng thái</th>
+          <th style="width: 70px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of tableRows(); track row.key; let i = $index) {
+          <tr>
+            <td class="text-center">{{ i + 1 }}</td>
+            <td>
+              <div class="target-cell">
+                <span>{{ row.targetLabel }}</span>
+
+                <!-- Nếu là Phòng ban hoặc Nhóm công việc thì có nút bấm mở xem danh sách người bên trong -->
+                @if (row.type === 'DEPARTMENT' || row.type === 'GROUP') {
+                  <button
+                    type="button"
+                    class="btn-toggle-members"
+                    (click)="toggleExpandRow(row)"
+                  >
+                    {{ row.expanded ? '▲ Ẩn danh sách' : '▼ Xem người tham gia (' + row.members.length + ')' }}
+                  </button>
+                }
+              </div>
+
+              @if (row.expanded && (row.type === 'DEPARTMENT' || row.type === 'GROUP')) {
+                <div class="member-sublist">
+                  @if (row.members.length === 0) {
+                    <div class="member-empty">Chưa có thành viên nào trong đơn vị/nhóm này</div>
+                  } @else {
+                    @for (m of row.members; track m.id) {
+                      <div class="member-item">
+                        • <strong>{{ m.fullName }}</strong> ({{ m.email }}) —
+                        <span>{{ m.positionNote }}</span>
+                      </div>
+                    }
+                  }
+                </div>
+              }
+            </td>
+            <td>{{ row.codeNotation }}</td>
+            <td>
+              <select class="cell-select" disabled>
+                <option>{{ row.role }}</option>
+              </select>
+            </td>
+            <td>
+              <select class="cell-select" [(ngModel)]="row.priority">
+                <option value="Bình thường">Bình thường</option>
+                <option value="Khẩn">Khẩn</option>
+                <option value="Hỏa tốc">Hỏa tốc</option>
+              </select>
+            </td>
+            <td>
+              <input type="date" class="cell-input" [(ngModel)]="row.dueDate" />
+            </td>
+            <td>
+              <input
+                type="text"
+                class="cell-input"
+                placeholder="Nhập ghi chú..."
+                [(ngModel)]="row.note"
+              />
+            </td>
+            <td class="text-center">{{ row.status }}</td>
+            <td class="text-center">
+              <button type="button" class="btn-del-row" (click)="removeRow(row.key)">Xóa</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="9" class="empty-table-msg">
+              Chưa có người nhận nào. Hãy nhấn vào "Tìm nâng cao 🔍" ở các mục trên để chọn Người chủ trì, Người giám sát và Đơn vị/Nhóm hỗ trợ.
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- NÚT LƯU PHÂN PHỐI -->
+  <div class="dispatch-footer">
+    <a routerLink="/documents/incoming" class="btn-cancel">Quay lại</a>
+    <button
+      type="button"
+      class="btn-submit"
+      [disabled]="submitting() || tableRows().length === 0"
+      (click)="submitDispatch()"
+    >
+      {{ submitting() ? 'Đang lưu công việc...' : 'Hoàn tất phân phối & Giao việc' }}
+    </button>
+  </div>
+</div>
+
+<!-- POPUP 1: CHỌN NGƯỜI CHỦ TRÌ (CHỈ CHỌN 1 TRƯỞNG/PHÓ PHÒNG, GIÁM ĐỐC/PHÓ GĐ) -->
+@if (activePicker() === 'MAIN') {
+  <div class="modal-backdrop" (click)="closePicker()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Chọn Người chủ trì (Chọn 1 Lãnh đạo / Trưởng, Phó phòng)</h3>
+        <button type="button" class="close-btn" (click)="closePicker()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Tìm theo tên, email, phòng ban, chức vụ..."
+          [ngModel]="pickerKeyword()"
+          (ngModelChange)="pickerKeyword.set($event)"
+        />
+        <div class="picker-list">
+          @for (u of filteredLeaders(); track u.id) {
+            <label class="picker-row">
+              <input
+                type="radio"
+                name="mainLeader"
+                [value]="u.id"
+                [checked]="tempMainUserId() === u.id"
+                (change)="tempMainUserId.set(u.id)"
+              />
+              <div>
+                <strong>{{ u.fullName }}</strong> — <span>{{ u.rolesLabel }}</span>
+                <div class="sub-info">{{ u.departmentName }} ({{ u.email }})</div>
+              </div>
+            </label>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closePicker()">Hủy</button>
+        <button type="button" class="btn-submit" (click)="confirmMainPicker()">Chọn Chủ trì</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- POPUP 2: CHỌN NGƯỜI GIÁM SÁT (CHỌN NHIỀU TRƯỞNG/PHÓ PHÒNG, GIÁM ĐỐC/PHÓ GĐ) -->
+@if (activePicker() === 'SUPERVISOR') {
+  <div class="modal-backdrop" (click)="closePicker()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Chọn Người giám sát (Có thể chọn nhiều người)</h3>
+        <button type="button" class="close-btn" (click)="closePicker()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Tìm theo tên, email, phòng ban, chức vụ..."
+          [ngModel]="pickerKeyword()"
+          (ngModelChange)="pickerKeyword.set($event)"
+        />
+        <div class="picker-list">
+          @for (u of filteredLeaders(); track u.id) {
+            <label class="picker-row">
+              <input
+                type="checkbox"
+                [checked]="tempSupervisorIds().has(u.id)"
+                (change)="toggleSupervisor(u.id, $any($event.target).checked)"
+              />
+              <div>
+                <strong>{{ u.fullName }}</strong> — <span>{{ u.rolesLabel }}</span>
+                <div class="sub-info">{{ u.departmentName }} ({{ u.email }})</div>
+              </div>
+            </label>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closePicker()">Hủy</button>
+        <button type="button" class="btn-submit" (click)="confirmSupervisorPicker()">
+          Xác nhận ({{ tempSupervisorIds().size }} người)
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- POPUP 3: CHỌN PHÒNG BAN (TP/PP) / NHÓM CÔNG VIỆC / CÁ NHÂN HỖ TRỢ         -->
+@if (activePicker() === 'SUPPORT') {
+  <div class="modal-backdrop" (click)="closePicker()">
+    <div class="modal-box modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Chọn Phòng ban / Nhóm công việc / Cá nhân hỗ trợ</h3>
+        <button type="button" class="close-btn" (click)="closePicker()">&times;</button>
+      </div>
+
+      <div class="tab-bar">
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="supportTab() === 'DEPT'"
+          (click)="supportTab.set('DEPT')"
+        >
+          1. Danh sách Phòng ban
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="supportTab() === 'GROUP'"
+          (click)="supportTab.set('GROUP')"
+        >
+          2. Nhóm công việc
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="supportTab() === 'USER'"
+          (click)="supportTab.set('USER')"
+        >
+          3. Danh sách Cán bộ (User)
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- TAB 1: CHỌN PHÒNG BAN (TÍCH CHỌN TRƯỞNG PHÒNG VÀ/HOẶC PHÓ PHÒNG) -->
+        @if (supportTab() === 'DEPT') {
+          <div class="picker-list">
+            @for (d of options()?.departments ?? []; track d.id) {
+              <div class="dept-picker-item">
+                <div class="dept-name">{{ d.name }}</div>
+                <div class="dept-role-options">
+                  <label class="role-check">
+                    <input
+                      type="checkbox"
+                      [disabled]="!d.headId"
+                      [checked]="isDeptRoleChecked(d.id, 'head')"
+                      (change)="toggleDeptRole(d, 'head', $any($event.target).checked)"
+                    />
+                    <span>Trưởng phòng: <strong>{{ d.headName || 'Chưa gán' }}</strong></span>
+                  </label>
+
+                  <label class="role-check">
+                    <input
+                      type="checkbox"
+                      [disabled]="!d.deputyId"
+                      [checked]="isDeptRoleChecked(d.id, 'deputy')"
+                      (change)="toggleDeptRole(d, 'deputy', $any($event.target).checked)"
+                    />
+                    <span>Phó phòng: <strong>{{ d.deputyName || 'Chưa gán' }}</strong></span>
+                  </label>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- TAB 2: CHỌN NHÓM CÔNG VIỆC -->
+        @if (supportTab() === 'GROUP') {
+          <div class="picker-list">
+            @for (g of options()?.taskGroups ?? []; track g.id) {
+              <div class="dept-picker-item">
+                <label class="picker-row" style="border: none; padding: 0">
+                  <input
+                    type="checkbox"
+                    [checked]="tempSupportGroupIds().has(g.id)"
+                    (change)="toggleSupportGroup(g.id, $any($event.target).checked)"
+                  />
+                  <div>
+                    <strong>{{ g.name }}</strong> ({{ g.memberCount }} thành viên)
+                  </div>
+                </label>
+                @if (g.members && g.members.length > 0) {
+                  <div class="sub-info" style="margin-left: 24px; margin-top: 4px">
+                    Thành viên:
+                    @for (m of g.members; track m.id; let last = $last) {
+                      <span>{{ m.fullName }}{{ !last ? ', ' : '' }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- TAB 3: CHỌN USER LẺ -->
+        @if (supportTab() === 'USER') {
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Tìm cán bộ theo tên, email, phòng ban..."
+            [ngModel]="pickerKeyword()"
+            (ngModelChange)="pickerKeyword.set($event)"
+          />
+          <div class="picker-list">
+            @for (u of filteredAllUsers(); track u.id) {
+              <label class="picker-row">
+                <input
+                  type="checkbox"
+                  [checked]="tempSupportUserIds().has(u.id)"
+                  (change)="toggleSupportUser(u.id, $any($event.target).checked)"
+                />
+                <div>
+                  <strong>{{ u.fullName }}</strong> — <span>{{ u.rolesLabel }}</span>
+                  <div class="sub-info">{{ u.departmentName }} ({{ u.email }})</div>
+                </div>
+              </label>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closePicker()">Hủy</button>
+        <button type="button" class="btn-submit" (click)="confirmSupportPicker()">
+          Đưa vào bảng phân phối
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,479 @@
+<div class="page-header">
+  <h2>Văn bản đến</h2>
+  <div class="breadcrumb">
+    <a routerLink="/home">Tổng quan</a>
+    <span>/</span>
+    <span>Quản lý văn bản</span>
+    <span>/</span>
+    <span class="current">Văn bản đến</span>
+  </div>
+</div>
+
+<!-- Khung bộ lọc tìm kiếm -->
+<form class="filter-card" (ngSubmit)="onSearch()">
+  <div class="filter-grid">
+    <div class="filter-group filter-keyword">
+      <label for="kw">Từ khóa</label>
+      <input
+        id="kw"
+        name="keyword"
+        type="text"
+        placeholder="Trích yếu, số/ký hiệu, cơ quan ban hành..."
+        [(ngModel)]="keyword"
+      />
+    </div>
+
+    <div class="filter-group">
+      <label for="bookId">Sổ văn bản</label>
+      <select id="bookId" name="bookId" [(ngModel)]="selectedBookId">
+        <option [ngValue]="null">-- Tất cả sổ --</option>
+        @for (b of books(); track b.id) {
+          <option [ngValue]="b.id">{{ b.name }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="typeId">Loại văn bản</label>
+      <select id="typeId" name="typeId" [(ngModel)]="selectedTypeId">
+        <option [ngValue]="null">-- Tất cả loại --</option>
+        @for (t of types(); track t.id) {
+          <option [ngValue]="t.id">{{ t.name }} ({{ t.abbreviation }})</option>
+        }
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="from">Ngày đến từ</label>
+      <input id="from" name="arrivalFrom" type="date" [(ngModel)]="arrivalFrom" />
+    </div>
+
+    <div class="filter-group">
+      <label for="to">Đến ngày</label>
+      <input id="to" name="arrivalTo" type="date" [(ngModel)]="arrivalTo" />
+    </div>
+  </div>
+
+  <div class="filter-actions">
+    <div class="left-actions">
+      <button type="submit" class="btn-primary">Tìm kiếm</button>
+      <button type="button" class="btn-secondary" (click)="resetFilters()">Đặt lại</button>
+    </div>
+
+    <a routerLink="/documents/incoming/new" class="btn-add">+ Thêm văn bản đến</a>
+  </div>
+</form>
+
+@if (pageError()) {
+  <div class="alert-error">{{ pageError() }}</div>
+}
+
+<!-- Bảng danh sách văn bản đến -->
+<div class="card">
+  @if (loading()) {
+    <div class="empty-state">Đang tải danh sách văn bản đến...</div>
+  } @else if (documents().length === 0) {
+    <div class="empty-state">
+      <p class="empty-title">Không tìm thấy văn bản đến nào</p>
+      <p class="empty-hint">Thử thay đổi bộ lọc tìm kiếm hoặc nhấn "+ Thêm văn bản đến" để vào sổ mới.</p>
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 105px">NGÀY ĐẾN</th>
+            <th style="width: 90px">SỐ ĐẾN</th>
+            <th style="width: 200px">NƠI GỬI</th>
+            <th style="width: 130px">SỐ, KÝ HIỆU</th>
+            <th style="width: 105px">NGÀY KÝ</th>
+            <th>TÊN LOẠI VÀ TRÍCH YẾU NỘI DUNG</th>
+            <th style="width: 190px">THAO TÁC</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (doc of documents(); track doc.id) {
+            <tr [class.row-unread]="(doc.status || 'NEW') === 'NEW'">
+              <td class="text-center">{{ formatDate(doc.arrivalDate) }}</td>
+              <td class="text-center">{{ formatArrivalNumber(doc) }}</td>
+              <td>{{ doc.organName || '—' }}</td>
+              <td>{{ formatCode(doc) }}</td>
+              <td class="text-center">{{ formatDate(doc.issuedDate) }}</td>
+              <td>
+                <a class="doc-title-link" (click)="viewDetail(doc)">
+                  {{ doc.documentTypeName }} - {{ doc.subject }}
+                </a>
+                <div class="attachment-line">
+                  File đính kèm:
+                  @if (doc.attachmentName) {
+                    <a
+                      class="attachment-link"
+                      [href]="attachmentUrl(doc.id)"
+                      target="_blank"
+                      [title]="doc.attachmentName"
+                    >
+                      &#128206; {{ doc.attachmentName }}
+                    </a>
+                  } @else {
+                    <span class="text-muted">Không có</span>
+                  }
+                </div>
+              </td>
+              <td class="actions-cell">
+                <div class="status-text">{{ statusLabel(doc.status) }}</div>
+                <div class="action-links">
+                  @if (canSubmitChief(doc)) {
+                    <button type="button" class="link-btn" (click)="openWorkflowModal(doc, 'SUBMIT_CHIEF')">
+                      Trình Chánh VP
+                    </button>
+                  }
+                  @if (canForwardDirector(doc)) {
+                    <button type="button" class="link-btn" (click)="openWorkflowModal(doc, 'FORWARD_DIRECTOR')">
+                      Trình GĐ
+                    </button>
+                  }
+                  @if (canApproveDirector(doc)) {
+                    <button type="button" class="link-btn" (click)="openWorkflowModal(doc, 'APPROVE_DIRECTOR')">
+                      Bút phê
+                    </button>
+                  }
+                  @if (canDispatch(doc)) {
+                    <a class="link-btn" [routerLink]="['/documents/incoming', doc.id, 'dispatch']">
+                      Phân phối
+                    </a>
+                  }
+                  @if (canManageDoc()) {
+                  <button type="button" class="link-btn" (click)="editDocument(doc)">Sửa</button>
+                  <button type="button" class="link-btn danger" (click)="deleteDocument(doc)">Xóa</button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Thanh phân trang -->
+    <div class="pagination-bar">
+      <div class="page-info">
+        Tổng số <strong>{{ totalElements() }}</strong> văn bản — Trang
+        <strong>{{ totalPages() > 0 ? page() + 1 : 0 }}</strong> / {{ totalPages() }}
+      </div>
+
+      <div class="page-controls">
+        <label for="pageSize" class="size-label">Hiển thị:</label>
+        <select
+          id="pageSize"
+          [ngModel]="size()"
+          (ngModelChange)="onSizeChange($event)"
+          class="size-select"
+        >
+          <option [ngValue]="10">10 / trang</option>
+          <option [ngValue]="20">20 / trang</option>
+          <option [ngValue]="50">50 / trang</option>
+        </select>
+
+        <button
+          type="button"
+          class="btn-page"
+          [disabled]="page() <= 0"
+          (click)="changePage(page() - 1)"
+        >
+          &laquo; Trước
+        </button>
+        <button
+          type="button"
+          class="btn-page"
+          [disabled]="page() + 1 >= totalPages()"
+          (click)="changePage(page() + 1)"
+        >
+          Sau &raquo;
+        </button>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- MODAL 1: XEM CHI TIẾT & LỊCH SỬ BÚT PHÊ / CHUYỂN TIẾP -->
+@if (selectedDoc(); as d) {
+  <div class="modal-backdrop" (click)="closeDetail()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Chi tiết văn bản đến (Số đến: {{ d.arrivalNumber }})</h3>
+        <button type="button" class="close-btn" (click)="closeDetail()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-subject">
+          {{ d.subject }}
+          <span class="status-badge" style="margin-left: 8px" [attr.data-status]="d.status || 'NEW'">
+            {{ statusLabel(d.status) }}
+          </span>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Sổ văn bản:</span>
+            <span class="detail-val">{{ d.documentBookName }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Loại văn bản:</span>
+            <span class="detail-val">{{ d.documentTypeName }} ({{ d.documentTypeAbbreviation }})</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Số đến / Ngày đến:</span>
+            <span class="detail-val">{{ d.arrivalNumber }} — {{ formatDate(d.arrivalDate) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Số / Ký hiệu:</span>
+            <span class="detail-val">{{ d.codeNumber || '—' }} / {{ d.codeNotation || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Cơ quan ban hành:</span>
+            <span class="detail-val">{{ d.organName || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Người ký:</span>
+            <span class="detail-val">
+              {{ d.signerFullName || '—' }} {{ d.signerPosition ? '(' + d.signerPosition + ')' : '' }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Nơi nhận / Đơn vị xử lý:</span>
+            <span class="detail-val">{{ d.toPlaces || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Hạn giải quyết:</span>
+            <span class="detail-val">{{ formatDate(d.dueDate) }}</span>
+          </div>
+        </div>
+
+        @if (d.traceHeaderList) {
+          <div class="detail-block">
+            <div class="detail-label">Nhật ký bút phê &amp; chỉ đạo (TraceHeaderList):</div>
+            <div class="detail-box">{{ d.traceHeaderList }}</div>
+          </div>
+        }
+
+        @if (transferHistory().length > 0) {
+          <div class="detail-block">
+            <div class="detail-label">Chi tiết các lượt chuyển văn bản:</div>
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Bước</th>
+                  <th>Người gửi</th>
+                  <th>Người nhận / Đơn vị</th>
+                  <th>Nội dung ý kiến / Bút phê</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (h of transferHistory(); track h.id) {
+                  <tr>
+                    <td>{{ stepLabel(h.stepType) }}</td>
+                    <td>{{ h.senderName }}</td>
+                    <td>
+                      <strong>{{ h.receiverName }}</strong>
+                      @if (h.departmentName) {
+                        <div class="sub-text">{{ h.departmentName }}</div>
+                      }
+                      @if (h.taskGroupName) {
+                        <div class="sub-text">Nhóm: {{ h.taskGroupName }}</div>
+                      }
+                    </td>
+                    <td>{{ h.directiveNote || '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="closeDetail()">Đóng</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- MODAL 2: THỰC HIỆN CHUYỂN TIẾP / BÚT PHÊ / PHÂN PHỐI -->
+@if (workflowDoc(); as wfDoc) {
+  <div class="modal-backdrop" (click)="closeWorkflowModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>
+          @switch (workflowAction()) {
+            @case ('SUBMIT_CHIEF') { Trình Chánh văn phòng }
+            @case ('FORWARD_DIRECTOR') { Ý kiến Chánh văn phòng &amp; Trình Giám đốc }
+            @case ('APPROVE_DIRECTOR') { Bút phê / Ký duyệt của Giám đốc }
+            @case ('DISPATCH') { Phân phối văn bản đến Phòng ban / Nhóm công việc }
+          }
+        </h3>
+        <button type="button" class="close-btn" (click)="closeWorkflowModal()">&times;</button>
+      </div>
+
+      <form class="modal-body" (ngSubmit)="submitWorkflow()">
+        <div class="detail-subject">
+          Số đến {{ wfDoc.arrivalNumber }}: {{ wfDoc.subject }}
+        </div>
+
+        @if (wfDoc.traceHeaderList) {
+          <div class="detail-block" style="margin-bottom: 14px">
+            <div class="detail-label">Ý kiến / Bút phê trước đó:</div>
+            <div class="detail-box">{{ wfDoc.traceHeaderList }}</div>
+          </div>
+        }
+
+        <!-- Chọn Chánh VP khi trình Bước 1 -->
+        @if (workflowAction() === 'SUBMIT_CHIEF' && dispatchOptions(); as opts) {
+          <div class="filter-group" style="margin-bottom: 12px">
+            <label>Chọn Chánh văn phòng nhận:</label>
+            <select name="chiefId" [(ngModel)]="wfReceiverId">
+              @for (u of opts.officeChiefs; track u.id) {
+                <option [ngValue]="u.id">{{ u.fullName }} ({{ u.email }})</option>
+              }
+            </select>
+          </div>
+        }
+
+        <!-- Chọn Giám đốc khi trình Bước 2 -->
+        @if (workflowAction() === 'FORWARD_DIRECTOR' && dispatchOptions(); as opts) {
+          <div class="filter-group" style="margin-bottom: 12px">
+            <label>Chọn Giám đốc trình duyệt:</label>
+            <select name="directorId" [(ngModel)]="wfReceiverId">
+              @for (u of opts.directors; track u.id) {
+                <option [ngValue]="u.id">{{ u.fullName }} ({{ u.email }})</option>
+              }
+            </select>
+          </div>
+        }
+
+        <!-- Chọn Nhiều Phòng ban / Nhóm công việc / Cá nhân ở Bước 4 (Phân phối) -->
+            @if (workflowAction() === 'DISPATCH') {
+          <div class="dispatch-section">
+            <div class="dispatch-title">1. Chọn Phòng ban xử lý chính (Trưởng / Phó phòng):</div>
+            <div class="role-checks">
+              <label>
+                <input type="checkbox" name="incHead" [(ngModel)]="wfIncludeHead" />
+                Giao Trưởng phòng
+              </label>
+              <label>
+                <input type="checkbox" name="incDeputy" [(ngModel)]="wfIncludeDeputy" />
+                Giao Phó phòng
+              </label>
+            </div>
+
+            <div class="checkbox-list">
+              @for (dept of dispatchOptions()?.departments ?? []; track dept.id) {
+                <label class="checkbox-item">
+                  <input
+                    type="checkbox"
+                    [checked]="wfSelectedDeptIds.has(dept.id)"
+                    (change)="toggleSetItem(wfSelectedDeptIds, dept.id, $any($event.target).checked)"
+                  />
+                  <span>
+                    <strong>{{ dept.name }}</strong>
+                    <small class="sub-text">
+                      (TP: {{ dept.headName || 'Chưa gán' }} | PP: {{ dept.deputyName || 'Chưa gán' }})
+                    </small>
+                  </span>
+                </label>
+              } @empty {
+                <div class="sub-text">Chưa có dữ liệu phòng ban</div>
+              }
+            </div>
+
+            <div class="dispatch-title" style="margin-top: 12px">
+              2. Hoặc chọn thêm Người đảm nhận chính (Assignee):
+            </div>
+            <div class="checkbox-list">
+              @for (usr of dispatchOptions()?.allUsers ?? []; track usr.id) {
+                <label class="checkbox-item">
+                  <input
+                    type="checkbox"
+                    [checked]="wfSelectedUserIds.has(usr.id)"
+                    (change)="toggleSetItem(wfSelectedUserIds, usr.id, $any($event.target).checked)"
+                  />
+                  <span>{{ usr.fullName }} ({{ usr.email }})</span>
+                </label>
+              }
+            </div>
+
+            <div class="detail-grid" style="margin-top: 12px">
+              <div class="filter-group">
+                <label>3. Nhóm công việc (Task Group):</label>
+                <select name="wfTaskGroupId" [(ngModel)]="wfTaskGroupId">
+                  <option [ngValue]="null">-- Chọn nhóm công việc --</option>
+                  @for (grp of dispatchOptions()?.taskGroups ?? []; track grp.id) {
+                    <option [ngValue]="grp.id">{{ grp.name }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label>4. Người theo dõi (Supervisor):</label>
+                <select name="wfSupervisorId" [(ngModel)]="wfSupervisorId">
+                  <option [ngValue]="null">-- Chọn người theo dõi --</option>
+                  @for (usr of dispatchOptions()?.allUsers ?? []; track usr.id) {
+                    <option [ngValue]="usr.id">{{ usr.fullName }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label>5. Người hỗ trợ (Supporter):</label>
+                <select name="wfSupporterId" [(ngModel)]="wfSupporterId">
+                  <option [ngValue]="null">-- Chọn người hỗ trợ --</option>
+                  @for (usr of dispatchOptions()?.allUsers ?? []; track usr.id) {
+                    <option [ngValue]="usr.id">{{ usr.fullName }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          </div>
+        }
+
+        <div class="filter-group" style="margin-top: 12px">
+          <label for="wfNote">
+            @switch (workflowAction()) {
+              @case ('SUBMIT_CHIEF') { Ghi chú trình Chánh văn phòng }
+              @case ('FORWARD_DIRECTOR') { Ý kiến phân phối đề xuất của Chánh văn phòng * }
+              @case ('APPROVE_DIRECTOR') { Nội dung bút phê / chỉ đạo của Giám đốc * }
+              @case ('DISPATCH') { Nội dung ghi chú khi chuyển giao }
+            }
+          </label>
+          <textarea
+            id="wfNote"
+            name="wfDirectiveNote"
+            rows="3"
+            class="wf-textarea"
+            placeholder="Nhập nội dung ý kiến, bút phê chỉ đạo..."
+            [(ngModel)]="wfDirectiveNote"
+          ></textarea>
+        </div>
+
+        @if (workflowError()) {
+          <div class="alert-error" style="margin-top: 10px; margin-bottom: 0">
+            {{ workflowError() }}
+          </div>
+        }
+
+        <div class="modal-footer" style="margin-top: 16px; padding: 12px 0 0; background: none">
+          <button
+            type="button"
+            class="btn-secondary"
+            (click)="closeWorkflowModal()"
+            [disabled]="workflowSubmitting()"
+          >
+            Hủy
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="workflowSubmitting()">
+            {{ workflowSubmitting() ? 'Đang xử lý...' : 'Xác nhận chuyển' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

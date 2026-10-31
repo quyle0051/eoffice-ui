@@ -1,0 +1,163 @@
+<div class="page-header">
+  <h2>Sổ văn bản</h2>
+  <div class="breadcrumb">
+    <a routerLink="/home">Tổng quan</a>
+    <span>/</span>
+    <span>Danh mục</span>
+    <span>/</span>
+    <span class="current">Sổ văn bản</span>
+  </div>
+</div>
+
+<!-- Thanh công cụ -->
+<div class="toolbar">
+  <input
+    type="text"
+    class="search-input"
+    placeholder="Tìm theo tên sổ, tên viết tắt, sổ cha..."
+    [ngModel]="keyword()"
+    (ngModelChange)="keyword.set($event)"
+  />
+
+  <button type="button" class="btn-primary" (click)="openCreateModal()">
+    + Thêm sổ văn bản
+  </button>
+</div>
+
+@if (pageError()) {
+  <div class="alert-error">{{ pageError() }}</div>
+}
+
+<!-- Bảng dữ liệu -->
+<div class="card">
+  @if (loading()) {
+    <div class="empty-state">Đang tải dữ liệu...</div>
+  } @else if (filteredBooks().length === 0) {
+    <div class="empty-state">
+      <p class="empty-title">Chưa có sổ văn bản nào</p>
+      <p class="empty-hint">Nhấn "+ Thêm sổ văn bản" để khởi tạo sổ mới.</p>
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 60px">ID</th>
+            <th>Tên sổ văn bản</th>
+            <th style="width: 150px">Tên viết tắt</th>
+            <th>Sổ cha</th>
+            <th style="width: 160px; text-align: center">Số ngày xử lý chuẩn</th>
+            <th style="width: 150px; text-align: right">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (b of filteredBooks(); track b.id) {
+            <tr>
+              <td class="text-muted">#{{ b.id }}</td>
+              <td class="font-semibold">{{ b.name }}</td>
+              <td>
+                @if (b.shortName) {
+                  <span class="badge">{{ b.shortName }}</span>
+                } @else {
+                  <span class="text-muted">—</span>
+                }
+              </td>
+              <td>{{ b.parentName ?? '— (Sổ gốc)' }}</td>
+              <td style="text-align: center">
+                @if (b.standardDays !== null && b.standardDays !== undefined) {
+                  {{ b.standardDays }} ngày
+                } @else {
+                  <span class="text-muted">—</span>
+                }
+              </td>
+              <td class="actions">
+                <button type="button" class="btn-action edit" (click)="openEditModal(b)">
+                  Sửa
+                </button>
+                <button type="button" class="btn-action delete" (click)="deleteBook(b)">
+                  Xóa
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<!-- Modal Thêm / Cập nhật -->
+@if (showModal()) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingId() ? 'Cập nhật sổ văn bản' : 'Thêm sổ văn bản mới' }}</h3>
+        <button type="button" class="close-btn" (click)="closeModal()">&times;</button>
+      </div>
+
+      <form (ngSubmit)="saveBook()" #bookForm="ngForm" class="modal-body">
+        <div class="form-group">
+          <label for="bookName">Tên sổ văn bản <span class="required">*</span></label>
+          <input
+            id="bookName"
+            name="name"
+            type="text"
+            maxlength="255"
+            required
+            placeholder="Ví dụ: Sổ văn bản đến năm 2026"
+            [(ngModel)]="formName"
+          />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="shortName">Tên viết tắt</label>
+            <input
+              id="shortName"
+              name="shortName"
+              type="text"
+              maxlength="50"
+              placeholder="Ví dụ: SVBĐ-2026"
+              [(ngModel)]="formShortName"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="standardDays">Số ngày xử lý chuẩn</label>
+            <input
+              id="standardDays"
+              name="standardDays"
+              type="number"
+              min="0"
+              placeholder="Ví dụ: 7"
+              [(ngModel)]="formStandardDays"
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="parentId">Sổ cha (nếu có)</label>
+          <select id="parentId" name="parentId" [(ngModel)]="formParentId">
+            <option [ngValue]="null">-- Không có (Sổ gốc) --</option>
+            @for (p of parentOptions(); track p.id) {
+              <option [ngValue]="p.id">{{ p.name }}</option>
+            }
+          </select>
+        </div>
+
+        @if (modalError()) {
+          <div class="alert-error modal-alert">{{ modalError() }}</div>
+        }
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="closeModal()" [disabled]="submitting()">
+            Hủy
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="bookForm.invalid || submitting()">
+            {{ submitting() ? 'Đang lưu...' : 'Lưu lại' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

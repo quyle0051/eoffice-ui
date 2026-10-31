@@ -1,7 +1,15 @@
-<div class="home">
-  @if (user(); as u) {
-    <h2>Xin chào, {{ u.email }}</h2>
-    <p>Vai trò: {{ u.roles.join(', ') }}</p>
-    <button (click)="logout()">Đăng xuất</button>
+<div class="welcome">
+  <h2>Xin chào, {{ user()?.email }}</h2>
+  <p>{{ today }}</p>
+</div>
+
+<h3 class="section-title">Truy cập nhanh</h3>
+
+<div class="tiles">
+  @for (t of tiles; track t.link) {
+    <a class="tile" [routerLink]="t.link">
+      <div class="tile-title">{{ t.title }}</div>
+      <div class="tile-desc">{{ t.desc }}</div>
+    </a>
   }
 </div>
