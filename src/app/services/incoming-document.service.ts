@@ -114,6 +114,9 @@ export interface DepartmentOption {
     deputyId: number | null;
     deputyName: string | null;
     deputyEmail: string | null;
+    heads?: UserOption[];
+    deputies?: UserOption[];
+    clerks?: UserOption[];
 }
 
 export interface TaskGroupOption {

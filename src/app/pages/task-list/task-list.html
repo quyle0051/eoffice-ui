@@ -1,0 +1,214 @@
+<div class="page-header">
+  <h2>Quản lý công việc</h2>
+  <div class="breadcrumb">
+    <a routerLink="/home">Tổng quan</a>
+    <span>/</span>
+    <span class="current">Danh sách công việc</span>
+  </div>
+</div>
+
+@if (errorMessage()) {
+  <div class="alert-error">{{ errorMessage() }}</div>
+}
+
+<!-- 1. Thanh Tab chuyển chế độ xem -->
+<div class="mode-tabs">
+  <button
+    type="button"
+    class="mode-tab"
+    [class.active]="activeMode() === 'ASSIGNED'"
+    (click)="switchMode('ASSIGNED')"
+  >
+    Việc tôi chủ trì
+  </button>
+  <button
+    type="button"
+    class="mode-tab"
+    [class.active]="activeMode() === 'SUPPORTED'"
+    (click)="switchMode('SUPPORTED')"
+  >
+    Việc phối hợp / Hỗ trợ
+  </button>
+  <button
+    type="button"
+    class="mode-tab"
+    [class.active]="activeMode() === 'SUPERVISED'"
+    (click)="switchMode('SUPERVISED')"
+  >
+    Việc cần theo dõi (Giám sát)
+  </button>
+  <button
+    type="button"
+    class="mode-tab"
+    [class.active]="activeMode() === 'CREATED'"
+    (click)="switchMode('CREATED')"
+  >
+    Việc tôi giao / Phân phối
+  </button>
+</div>
+
+<!-- 2. Bộ lọc tìm kiếm -->
+<form class="filter-bar" (ngSubmit)="onSearch()">
+  <div class="filter-item keyword-box">
+    <label for="keyword">Từ khóa</label>
+    <input
+      id="keyword"
+      name="keyword"
+      type="text"
+      placeholder="Tìm theo tên công việc, trích yếu văn bản..."
+      [(ngModel)]="keyword"
+    />
+  </div>
+
+  <div class="filter-item">
+    <label for="status">Trạng thái</label>
+    <select id="status" name="status" [(ngModel)]="selectedStatus">
+      <option value="">-- Tất cả trạng thái --</option>
+      <option value="NEW">Mới giao</option>
+      <option value="IN_PROGRESS">Đang thực hiện</option>
+      <option value="COMPLETED">Hoàn thành</option>
+      <option value="CANCELLED">Đã hủy</option>
+    </select>
+  </div>
+
+  <div class="filter-actions">
+    <button type="submit" class="btn-primary">Tìm kiếm</button>
+    <button type="button" class="btn-secondary" (click)="resetFilters()">Đặt lại</button>
+  </div>
+</form>
+
+<!-- 3. Bảng danh sách công việc (Kẻ ô phẳng, rõ ràng) -->
+<div class="card">
+  @if (loading()) {
+    <div class="empty-state">Đang tải danh sách công việc...</div>
+  } @else if (tasks().length === 0) {
+    <div class="empty-state">
+      Không có công việc nào trong mục này.
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 50px">STT</th>
+            <th>TÊN CÔNG VIỆC &amp; VĂN BẢN LIÊN QUAN</th>
+            <th style="width: 170px">NGƯỜI CHỦ TRÌ</th>
+            <th style="width: 220px">GIÁM SÁT &amp; HỖ TRỢ</th>
+            <th style="width: 105px">NGÀY BẮT ĐẦU</th>
+            <th style="width: 105px">HẠN XỬ LÝ</th>
+            <th style="width: 110px">TIẾN ĐỘ</th>
+            <th style="width: 120px">TRẠNG THÁI</th>
+            <th style="width: 110px">THAO TÁC</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of tasks(); track t.id; let i = $index) {
+            <tr [class.row-unread]="t.status === 'NEW'">
+              <td class="text-center">{{ page() * size() + i + 1 }}</td>
+
+              <td>
+                <a class="task-title-link" (click)="openTaskDetail(t)">
+                  {{ t.title }}
+                </a>
+                @if (t.incomingDocumentId) {
+                  <div class="sub-line">
+                    Văn bản đến số <strong>{{ t.incomingArrivalNumber }}</strong>: {{ t.incomingSubject }}
+                  </div>
+                }
+                @if (t.taskGroupName) {
+                  <div class="sub-line">
+                    Nhóm công việc: <strong>{{ t.taskGroupName }}</strong>
+                  </div>
+                }
+              </td>
+
+              <td>
+                <div><strong>{{ t.assigneeName }}</strong></div>
+                <div class="sub-line">Người giao: {{ t.creatorName }}</div>
+              </td>
+
+              <td>
+                @if (t.supervisorNames && t.supervisorNames.length > 0) {
+                  <div class="sub-line">
+                    <strong>Giám sát:</strong> {{ t.supervisorNames.join(', ') }}
+                  </div>
+                }
+                @if (t.supporterNames && t.supporterNames.length > 0) {
+                  <div class="sub-line">
+                    <strong>Hỗ trợ ({{ t.supporterNames.length }}):</strong>
+                    {{ t.supporterNames.join(', ') }}
+                  </div>
+                }
+                @if ((!t.supervisorNames || t.supervisorNames.length === 0) && (!t.supporterNames || t.supporterNames.length === 0)) {
+                  <span class="sub-line">—</span>
+                }
+              </td>
+
+              <td class="text-center">{{ formatDateTime(t.startTime) }}</td>
+
+              <td class="text-center" [class.overdue-text]="isOverdue(t)">
+                {{ formatDateTime(t.endTime) }}
+                @if (isOverdue(t)) {
+                  <div class="overdue-note">(Quá hạn)</div>
+                }
+              </td>
+
+              <td class="text-center">
+                <strong>{{ t.progressPercent ?? 0 }}%</strong>
+              </td>
+
+              <td class="text-center">
+                {{ statusLabel(t.status) }}
+              </td>
+
+              <td class="text-center">
+                <button type="button" class="link-btn" (click)="openTaskDetail(t)">
+                  Báo cáo / Xem
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Thanh phân trang -->
+    <div class="pagination-bar">
+      <div class="page-info">
+        Tổng số <strong>{{ totalElements() }}</strong> công việc — Trang
+        <strong>{{ totalPages() > 0 ? page() + 1 : 0 }}</strong> / {{ totalPages() }}
+      </div>
+
+      <div class="page-controls">
+        <label for="pageSize">Hiển thị:</label>
+        <select
+          id="pageSize"
+          [ngModel]="size()"
+          (ngModelChange)="onSizeChange($event)"
+          class="size-select"
+        >
+          <option [ngValue]="10">10 / trang</option>
+          <option [ngValue]="20">20 / trang</option>
+          <option [ngValue]="50">50 / trang</option>
+        </select>
+
+        <button
+          type="button"
+          class="btn-page"
+          [disabled]="page() <= 0"
+          (click)="changePage(page() - 1)"
+        >
+          &laquo; Trước
+        </button>
+        <button
+          type="button"
+          class="btn-page"
+          [disabled]="page() + 1 >= totalPages()"
+          (click)="changePage(page() + 1)"
+        >
+          Sau &raquo;
+        </button>
+      </div>
+    </div>
+  }
+</div>

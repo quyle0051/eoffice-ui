@@ -7,6 +7,8 @@ import { DocumentBooks } from './pages/document-books/document-books';
 import { IncomingDocuments } from './pages/incoming-documents/incoming-documents';
 import { IncomingDocumentForm } from './pages/incoming-document-form/incoming-document-form';
 import { IncomingDocumentDispatch } from './pages/incoming-document-dispatch/incoming-document-dispatch';
+import { TaskList } from './pages/task-list/task-list';
+import { TaskDetail } from './pages/task-detail/task-detail';
 
 const todo = (path: string, title: string, group: string) => ({
     path,
@@ -33,9 +35,11 @@ export const routes: Routes = [
 
             // Công việc
             todo('tasks/new', 'Giao việc', 'Công việc'),
-            todo('tasks/assigned', 'Việc được giao', 'Công việc'),
-            todo('tasks/created', 'Việc tôi giao', 'Công việc'),
-            todo('tasks/supervised', 'Việc cần theo dõi', 'Công việc'),
+            { path: 'tasks/assigned', component: TaskList },
+            { path: 'tasks/supported', component: TaskList },
+            { path: 'tasks/supervised', component: TaskList },
+            { path: 'tasks/created', component: TaskList },
+            { path: 'tasks/:id', component: TaskDetail },
             todo('task-groups', 'Nhóm công việc', 'Công việc'),
 
             // Danh mục

@@ -28,9 +28,10 @@ export const MENU: MenuGroup[] = [
         label: 'Công việc',
         icon: 'task',
         children: [
-            { label: 'Việc được giao', link: '/tasks/assigned' },
-            { label: 'Việc tôi giao', link: '/tasks/created' },
+            { label: 'Việc tôi chủ trì', link: '/tasks/assigned' },
+            { label: 'Việc tôi hỗ trợ', link: '/tasks/supported' },
             { label: 'Việc cần theo dõi', link: '/tasks/supervised' },
+            { label: 'Việc tôi giao', link: '/tasks/created' },
             { label: 'Nhóm công việc', link: '/task-groups' },
         ],
     },

@@ -1,0 +1,606 @@
+<div class="page-header">
+  <h2>Chi tiết công việc &amp; Báo cáo tiến độ</h2>
+  <div class="breadcrumb">
+    <a routerLink="/home">Tổng quan</a>
+    <span>/</span>
+    <a routerLink="/tasks/assigned">Danh sách công việc</a>
+    <span>/</span>
+    <span class="current">Chi tiết &amp; Báo cáo tuần</span>
+  </div>
+</div>
+
+@if (errorMessage()) {
+  <div class="alert-error">{{ errorMessage() }}</div>
+}
+
+@if (loading()) {
+  <div class="section-box empty-state">Đang tải thông tin công việc...</div>
+} @else if (task(); as t) {
+  <!-- ===================================================================== -->
+  <!-- KHUNG 1: THÔNG TIN CHUNG CỦA CÔNG VIỆC                                -->
+  <!-- ===================================================================== -->
+  <div class="section-box">
+    <div class="box-header">
+      <div>
+        <div class="task-main-title">{{ t.title }}</div>
+        @if (t.parentTaskId) {
+          <div class="parent-task-line">
+            Thuộc công việc gốc:
+            <a class="link-inline" (click)="openSubTask(t.parentTaskId)">
+              {{ t.parentTaskTitle || ('Công việc #' + t.parentTaskId) }}
+            </a>
+          </div>
+        }
+      </div>
+
+      <div class="status-control">
+        <span>Tiến độ: <strong>{{ t.progressPercent }}%</strong></span>
+        <span>|</span>
+        <label for="statusSelect">Trạng thái:</label>
+        <select
+          id="statusSelect"
+          [disabled]="!canUpdateStatus()"
+          [ngModel]="t.status"
+          (ngModelChange)="onStatusChange($event)"
+        >
+          <option value="NEW">Mới giao</option>
+          <option value="IN_PROGRESS">Đang thực hiện</option>
+          <option value="COMPLETED">Hoàn thành</option>
+          <option value="CANCELLED">Đã hủy</option>
+        </select>
+      </div>
+    </div>
+
+    <table class="info-table">
+      <tbody>
+        <tr>
+          <th style="width: 170px">Người giao việc</th>
+          <td>{{ t.creatorName }} ({{ t.creatorEmail }})</td>
+          <th style="width: 170px">Người chủ trì</th>
+          <td><strong>{{ t.assigneeName }}</strong> ({{ t.assigneeEmail }})</td>
+        </tr>
+        <tr>
+          <th>Người giám sát</th>
+          <td>
+            @if (t.supervisors && t.supervisors.length > 0) {
+              @for (s of t.supervisors; track s.id; let last = $last) {
+                <span>{{ s.fullName }}{{ !last ? ', ' : '' }}</span>
+              }
+            } @else {
+              <span>—</span>
+            }
+          </td>
+          <th>Người hỗ trợ / Phối hợp</th>
+          <td>
+            @if (t.supporters && t.supporters.length > 0) {
+              @for (sp of t.supporters; track sp.id; let last = $last) {
+                <span>{{ sp.fullName }}{{ !last ? ', ' : '' }}</span>
+              }
+            } @else {
+              <span>—</span>
+            }
+          </td>
+        </tr>
+        <tr>
+          <th>Thời gian bắt đầu</th>
+          <td>{{ formatDateTime(t.startTime) }}</td>
+          <th>Hạn hoàn thành</th>
+          <td><strong>{{ formatDateTime(t.endTime) }}</strong></td>
+        </tr>
+        @if (t.incomingDocumentId) {
+          <tr>
+            <th>Văn bản đến liên quan</th>
+            <td colspan="3">
+              Số đến <strong>{{ t.incomingArrivalNumber }}</strong> — {{ t.incomingSubject }}
+              @if (t.incomingAttachmentName) {
+                <span style="margin-left: 12px">
+                  | File văn bản:
+                  <a
+                    class="link-inline"
+                    [href]="docService.getAttachmentUrl(t.incomingDocumentId)"
+                    target="_blank"
+                  >
+                    &#128206; {{ t.incomingAttachmentName }}
+                  </a>
+                </span>
+              }
+            </td>
+          </tr>
+        }
+        @if (t.description) {
+          <tr>
+            <th>Nội dung / Ý kiến chỉ đạo</th>
+            <td colspan="3">
+              <pre class="desc-pre">{{ t.description }}</pre>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- KHUNG 2: DANH SÁCH VIỆC CON & CHIA NHỎ CÔNG VIỆC (CHO NGƯỜI CHỦ TRÌ)  -->
+  <!-- ===================================================================== -->
+  <div class="section-box">
+    <div class="box-header">
+      <div class="box-title">
+        Công việc nhánh / Việc con đã phân công ({{ t.subTasks?.length || 0 }})
+      </div>
+
+      @if (isMainAssignee()) {
+        <button type="button" class="btn-primary" (click)="toggleSubTaskForm()">
+          {{ showSubTaskForm() ? 'Đóng khung chia việc' : '+ Chia nhỏ / Giao việc con' }}
+        </button>
+      }
+    </div>
+
+    <!-- KHUNG TẠO VIỆC CON (GIỐNG GIAO DIỆN PHÂN PHỐI CỦA VĂN THƯ) -->
+    @if (showSubTaskForm()) {
+      <div class="subtask-creator">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Tên đầu việc con <span class="required">*</span></label>
+            <input
+              type="text"
+              placeholder="Nhập tên công việc con cần giao..."
+              [(ngModel)]="subTaskTitle"
+            />
+          </div>
+          <div class="form-group">
+            <label>Hạn xử lý việc con</label>
+            <input type="date" [(ngModel)]="subTaskDueDate" />
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px">
+          <label>Yêu cầu / Hướng dẫn thực hiện</label>
+          <textarea
+            rows="2"
+            placeholder="Nhập mô tả chi tiết cho cấp dưới thực hiện..."
+            [(ngModel)]="subTaskDescription"
+          ></textarea>
+        </div>
+
+        <!-- 3 Khung xám chọn Chủ trì / Giám sát / Hỗ trợ cho việc con -->
+        <div class="selector-block">
+          <div class="selector-header">
+            <strong>1. Người chủ trì việc con (Chọn 1 người)</strong> |
+            <button type="button" class="btn-lookup" (click)="openPicker('MAIN')">
+              Tìm nâng cao &#128269;
+            </button>
+          </div>
+          <div class="chip-box" (click)="openPicker('MAIN')">
+            @for (row of subMainRows(); track row.key) {
+              <span class="chip" (click)="$event.stopPropagation()">
+                {{ row.targetLabel }}
+                <button type="button" class="chip-remove" (click)="removeSubRow(row.key)">&times;</button>
+              </span>
+            }
+            <div class="chip-placeholder">Chọn chuyên viên hoặc phó phòng chủ trì đầu việc này</div>
+          </div>
+        </div>
+
+        <div class="selector-block">
+          <div class="selector-header">
+            <strong>2. Người giám sát việc con (Chọn nhiều)</strong> |
+            <button type="button" class="btn-lookup" (click)="openPicker('SUPERVISOR')">
+              Tìm nâng cao &#128269;
+            </button>
+          </div>
+          <div class="chip-box" (click)="openPicker('SUPERVISOR')">
+            @for (row of subSupervisorRows(); track row.key) {
+              <span class="chip" (click)="$event.stopPropagation()">
+                {{ row.targetLabel }}
+                <button type="button" class="chip-remove" (click)="removeSubRow(row.key)">&times;</button>
+              </span>
+            }
+            <div class="chip-placeholder">Chọn người giám sát việc con</div>
+          </div>
+        </div>
+
+        <div class="selector-block">
+          <div class="selector-header">
+            <strong>3. Phòng ban / Nhóm công việc / Người hỗ trợ việc con</strong> |
+            <button type="button" class="btn-lookup" (click)="openPicker('SUPPORT')">
+              Tìm nâng cao &#128269;
+            </button>
+          </div>
+          <div class="chip-box" (click)="openPicker('SUPPORT')">
+            @for (row of subSupportRows(); track row.key) {
+              <span class="chip" (click)="$event.stopPropagation()">
+                {{ row.targetLabel }}
+                <button type="button" class="chip-remove" (click)="removeSubRow(row.key)">&times;</button>
+              </span>
+            }
+            <div class="chip-placeholder">Chọn phòng ban, nhóm công việc hoặc cá nhân phối hợp</div>
+          </div>
+        </div>
+
+        <div class="subtask-footer">
+          <button type="button" class="btn-secondary" (click)="showSubTaskForm.set(false)">
+            Hủy
+          </button>
+          <button
+            type="button"
+            class="btn-primary"
+            [disabled]="subTaskSubmitting()"
+            (click)="submitSubTask()"
+          >
+            {{ subTaskSubmitting() ? 'Đang giao việc...' : 'Xác nhận giao việc con' }}
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Bảng danh sách các việc con đã chia -->
+    @if (t.subTasks && t.subTasks.length > 0) {
+      <table class="data-table" style="margin-top: 10px">
+        <thead>
+          <tr>
+            <th style="width: 45px">STT</th>
+            <th>TÊN ĐẦU VIỆC CON</th>
+            <th style="width: 170px">NGƯỜI CHỦ TRÌ</th>
+            <th style="width: 210px">GIÁM SÁT &amp; HỖ TRỢ</th>
+            <th style="width: 120px">HẠN XỬ LÝ</th>
+            <th style="width: 90px">TIẾN ĐỘ</th>
+            <th style="width: 110px">TRẠNG THÁI</th>
+            <th style="width: 90px">XEM</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (sub of t.subTasks; track sub.id; let i = $index) {
+            <tr>
+              <td class="text-center">{{ i + 1 }}</td>
+              <td>
+                <a class="link-inline" (click)="openSubTask(sub.id)">{{ sub.title }}</a>
+              </td>
+              <td><strong>{{ sub.assigneeName }}</strong></td>
+              <td>
+                @if (sub.supporterNames && sub.supporterNames.length > 0) {
+                  <span>Hỗ trợ: {{ sub.supporterNames.join(', ') }}</span>
+                } @else {
+                  <span>—</span>
+                }
+              </td>
+              <td class="text-center">{{ formatDateTime(sub.endTime) }}</td>
+              <td class="text-center"><strong>{{ sub.progressPercent ?? 0 }}%</strong></td>
+              <td class="text-center">{{ statusLabel(sub.status) }}</td>
+              <td class="text-center">
+                <button type="button" class="link-btn" (click)="openSubTask(sub.id)">
+                  Mở xem
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else if (!showSubTaskForm()) {
+      <div class="empty-hint-line">
+        Chưa có đầu việc con nào được tách ra từ công việc này.
+      </div>
+    }
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- KHUNG 3: BẢNG TIN BÁO CÁO TIẾN ĐỘ HẰNG TUẦN (GIỐNG POST FACEBOOK)     -->
+  <!-- ===================================================================== -->
+  <div class="section-box">
+    <div class="box-header">
+      <div class="box-title">Bảng tin Báo cáo tiến độ hằng tuần &amp; Trao đổi công việc</div>
+    </div>
+
+    <!-- Hộp viết bài báo cáo mới (Post Composer) -->
+    <div class="post-composer">
+      <div class="composer-top-row">
+        <div class="composer-field">
+          <label>Loại bài đăng:</label>
+          <select [(ngModel)]="postType">
+            <option value="PROGRESS_REPORT">Báo cáo tiến độ tuần</option>
+            <option value="DISCUSSION">Thảo luận / Phối hợp</option>
+            <option value="DIRECTIVE">Đôn đốc / Nhận xét</option>
+          </select>
+        </div>
+
+        <div class="composer-field">
+          <label>Kỳ / Tuần báo cáo:</label>
+          <input
+            type="text"
+            placeholder="VD: Tuần 45 - Tháng 11/2026"
+            [(ngModel)]="weekLabel"
+          />
+        </div>
+
+        @if (postType === 'PROGRESS_REPORT') {
+          <div class="composer-field">
+            <label>Cập nhật tiến độ (%):</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              style="width: 80px"
+              [(ngModel)]="progressPercent"
+            />
+          </div>
+        }
+      </div>
+
+      <textarea
+        class="composer-textarea"
+        rows="3"
+        placeholder="Nhập nội dung báo cáo tiến độ tuần này, kết quả đạt được, khó khăn vướng mắc hoặc ý kiến trao đổi..."
+        [(ngModel)]="postContent"
+      ></textarea>
+
+      <!-- Danh sách file đã chọn chuẩn bị upload -->
+      @if (selectedPostFiles.length > 0) {
+        <div class="selected-files-bar">
+          @for (f of selectedPostFiles; track $index; let idx = $index) {
+            <span class="file-chip">
+              &#128206; {{ f.name }}
+              <button type="button" (click)="removeSelectedFile(idx)">&times;</button>
+            </span>
+          }
+        </div>
+      }
+
+      <div class="composer-actions">
+        <label class="file-upload-label">
+          &#128206; Đính kèm tệp báo cáo (Chọn nhiều file)
+          <input type="file" multiple hidden (change)="onPostFilesSelected($event)" />
+        </label>
+
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="posting() || !postContent.trim()"
+          (click)="submitPost()"
+        >
+          {{ posting() ? 'Đang đăng báo cáo...' : 'Đăng báo cáo lên bảng tin' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Danh sách các bài post báo cáo trên dòng thời gian -->
+    <div class="feed-list">
+      @for (post of t.posts; track post.id) {
+        <div class="feed-post-card">
+          <!-- Header của bài Post: Tên người đăng, Vai trò, Thời gian, Nhãn tuần & Tiến độ -->
+          <div class="post-header">
+            <div class="post-author-block">
+              <div class="author-avatar">{{ post.authorName.charAt(0).toUpperCase() }}</div>
+              <div>
+                <div class="author-name">
+                  <strong>{{ post.authorName }}</strong>
+                  @if (post.authorRoleLabel) {
+                    <span class="role-tag">[{{ post.authorRoleLabel }}]</span>
+                  }
+                </div>
+                <div class="post-time">
+                  {{ formatDateTime(post.createdAt) }} — {{ postTypeLabel(post.postType) }}
+                </div>
+              </div>
+            </div>
+
+            <div class="post-meta-right">
+              @if (post.weekLabel) {
+                <span class="meta-box">{{ post.weekLabel }}</span>
+              }
+              @if (post.progressPercent !== null && post.progressPercent !== undefined) {
+                <span class="meta-box">Tiến độ: <strong>{{ post.progressPercent }}%</strong></span>
+              }
+            </div>
+          </div>
+
+          <!-- Nội dung bài báo cáo -->
+          <div class="post-body">{{ post.content }}</div>
+
+          <!-- Danh sách File đính kèm trong bài báo cáo -->
+          @if (post.attachments && post.attachments.length > 0) {
+            <div class="post-attachments">
+              <div class="att-title">Tệp báo cáo đính kèm ({{ post.attachments.length }}):</div>
+              <div class="att-list">
+                @for (att of post.attachments; track att.id) {
+                  <a
+                    class="att-item"
+                    [href]="taskService.getPostAttachmentUrl(att.id)"
+                    target="_blank"
+                  >
+                    &#128206; {{ att.fileName }}
+                  </a>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Khu vực Bình luận (Comments) bên dưới mỗi bài Post -->
+          <div class="post-comments-section">
+            @if (post.comments && post.comments.length > 0) {
+              <div class="comment-list">
+                @for (c of post.comments; track c.id) {
+                  <div class="comment-item">
+                    <div class="comment-header">
+                      <strong>{{ c.authorName }}</strong>
+                      <span class="comment-time">{{ formatDateTime(c.createdAt) }}</span>
+                    </div>
+                    <div class="comment-content">{{ c.content }}</div>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="comment-input-row">
+              <input
+                type="text"
+                placeholder="Viết phản hồi, nhận xét cho báo cáo này..."
+                [(ngModel)]="commentInputs[post.id]"
+                (keyup.enter)="submitComment(post)"
+              />
+              <button type="button" class="btn-secondary" (click)="submitComment(post)">
+                Gửi
+              </button>
+            </div>
+          </div>
+        </div>
+      } @empty {
+        <div class="empty-state">
+          Chưa có bài báo cáo tiến độ nào. Người chủ trì, người giám sát hoặc người hỗ trợ có thể đăng báo cáo hằng tuần ở khung phía trên.
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- ========================================================================= -->
+<!-- CÁC POPUP CHỌN NGƯỜI KHI CHIA NHỎ CÔNG VIỆC CON                           -->
+<!-- ========================================================================= -->
+@if (activePicker() === 'MAIN' || activePicker() === 'SUPERVISOR') {
+  <div class="modal-backdrop" (click)="closePicker()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>
+          {{ activePicker() === 'MAIN' ? 'Chọn Người chủ trì việc con (1 người)' : 'Chọn Người giám sát việc con' }}
+        </h3>
+        <button type="button" class="close-btn" (click)="closePicker()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Tìm theo tên, email, phòng ban..."
+          [ngModel]="pickerKeyword()"
+          (ngModelChange)="pickerKeyword.set($event)"
+        />
+        <div class="picker-list">
+          @for (u of filteredAllUsers(); track u.id) {
+            <label class="picker-row">
+              @if (activePicker() === 'MAIN') {
+                <input
+                  type="radio"
+                  name="subMainUser"
+                  [checked]="tempMainUserId() === u.id"
+                  (change)="tempMainUserId.set(u.id)"
+                />
+              } @else {
+                <input
+                  type="checkbox"
+                  [checked]="tempSupervisorIds().has(u.id)"
+                  (change)="toggleSupervisor(u.id, $any($event.target).checked)"
+                />
+              }
+              <div>
+                <strong>{{ u.fullName }}</strong> — <span>{{ u.rolesLabel }}</span>
+                <div class="sub-info">{{ u.departmentName }} ({{ u.email }})</div>
+              </div>
+            </label>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="closePicker()">Hủy</button>
+        @if (activePicker() === 'MAIN') {
+          <button type="button" class="btn-primary" (click)="confirmMainPicker()">Chọn Chủ trì</button>
+        } @else {
+          <button type="button" class="btn-primary" (click)="confirmSupervisorPicker()">Xác nhận</button>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+@if (activePicker() === 'SUPPORT') {
+  <div class="modal-backdrop" (click)="closePicker()">
+    <div class="modal-box modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Chọn Phòng ban / Nhóm công việc / Cá nhân hỗ trợ việc con</h3>
+        <button type="button" class="close-btn" (click)="closePicker()">&times;</button>
+      </div>
+      <div class="tab-bar">
+        <button type="button" class="tab-btn" [class.active]="supportTab() === 'USER'" (click)="supportTab.set('USER')">
+          1. Cán bộ / Chuyên viên
+        </button>
+        <button type="button" class="tab-btn" [class.active]="supportTab() === 'DEPT'" (click)="supportTab.set('DEPT')">
+          2. Phòng ban
+        </button>
+        <button type="button" class="tab-btn" [class.active]="supportTab() === 'GROUP'" (click)="supportTab.set('GROUP')">
+          3. Nhóm công việc
+        </button>
+      </div>
+      <div class="modal-body">
+        @if (supportTab() === 'USER') {
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Tìm cán bộ..."
+            [ngModel]="pickerKeyword()"
+            (ngModelChange)="pickerKeyword.set($event)"
+          />
+          <div class="picker-list">
+            @for (u of filteredAllUsers(); track u.id) {
+              <label class="picker-row">
+                <input
+                  type="checkbox"
+                  [checked]="tempSupportUserIds().has(u.id)"
+                  (change)="toggleSupportUser(u.id, $any($event.target).checked)"
+                />
+                <div>
+                  <strong>{{ u.fullName }}</strong> — <span>{{ u.rolesLabel }}</span>
+                  <div class="sub-info">{{ u.departmentName }} ({{ u.email }})</div>
+                </div>
+              </label>
+            }
+          </div>
+        }
+        @if (supportTab() === 'DEPT') {
+          <div class="picker-list">
+            @for (d of options()?.departments ?? []; track d.id) {
+              <div class="picker-row" style="flex-direction: column; gap: 6px">
+                <strong>{{ d.name }}</strong>
+                <div style="display: flex; gap: 20px">
+                  <label>
+                    <input
+                      type="checkbox"
+                      [disabled]="!d.headId"
+                      [checked]="isDeptRoleChecked(d.id, 'head')"
+                      (change)="toggleDeptRole(d, 'head', $any($event.target).checked)"
+                    />
+                    Trưởng phòng ({{ d.headName || 'Chưa có' }})
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      [disabled]="!d.deputyId"
+                      [checked]="isDeptRoleChecked(d.id, 'deputy')"
+                      (change)="toggleDeptRole(d, 'deputy', $any($event.target).checked)"
+                    />
+                    Phó phòng ({{ d.deputyName || 'Chưa có' }})
+                  </label>
+                </div>
+              </div>
+            }
+          </div>
+        }
+        @if (supportTab() === 'GROUP') {
+          <div class="picker-list">
+            @for (g of options()?.taskGroups ?? []; track g.id) {
+              <label class="picker-row">
+                <input
+                  type="checkbox"
+                  [checked]="tempSupportGroupIds().has(g.id)"
+                  (change)="toggleSupportGroup(g.id, $any($event.target).checked)"
+                />
+                <div>
+                  <strong>{{ g.name }}</strong> ({{ g.memberCount }} thành viên)
+                </div>
+              </label>
+            }
+          </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="closePicker()">Hủy</button>
+        <button type="button" class="btn-primary" (click)="confirmSupportPicker()">Xác nhận chọn</button>
+      </div>
+    </div>
+  </div>
+}

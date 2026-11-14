@@ -332,13 +332,18 @@ export class IncomingDocumentDispatch implements OnInit {
                     positionNote: 'Trưởng phòng',
                 });
             }
-            if (roleCfg.deputy && dept.deputyId && dept.deputyName) {
-                members.push({
-                    id: dept.deputyId,
-                    fullName: dept.deputyName,
-                    email: dept.deputyEmail ?? '',
-                    positionNote: 'Phó phòng',
-                });
+            if (roleCfg.deputy) {
+                if (dept.deputies && dept.deputies.length > 0) {
+                    dept.deputies.forEach((dp) =>
+                        members.push({
+                            id: dp.id,
+                            fullName: dp.fullName,
+                            email: dp.email,
+                            positionNote: 'Phó phòng',
+                        }));
+                } else if (dept.deputyId && dept.deputyName) {
+                    members.push({ id: dept.deputyId, fullName: dept.deputyName, email: dept.deputyEmail ?? '', positionNote: 'Phó phòng' });
+                }
             }
 
             if (members.length > 0) {
