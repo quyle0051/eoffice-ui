@@ -9,6 +9,8 @@ import { IncomingDocumentForm } from './pages/incoming-document-form/incoming-do
 import { IncomingDocumentDispatch } from './pages/incoming-document-dispatch/incoming-document-dispatch';
 import { TaskList } from './pages/task-list/task-list';
 import { TaskDetail } from './pages/task-detail/task-detail';
+import { OutgoingDocuments } from './pages/outgoing-documents/outgoing-documents';
+import { OutgoingDocumentForm } from './pages/outgoing-document-form/outgoing-document-form';
 
 const todo = (path: string, title: string, group: string) => ({
     path,
@@ -28,10 +30,12 @@ export const routes: Routes = [
             // Quản lý văn bản
             { path: 'documents/incoming/new', component: IncomingDocumentForm },
             { path: 'documents/incoming', component: IncomingDocuments },
-            todo('documents/outgoing/new', 'Thêm văn bản đi', 'Quản lý văn bản'),
-            todo('documents/outgoing', 'Văn bản đi', 'Quản lý văn bản'),
+            { path: 'documents/outgoing', component: OutgoingDocuments },
+            { path: 'documents/outgoing/new', component: OutgoingDocumentForm },
+            { path: 'documents/outgoing/:id/edit', component: OutgoingDocumentForm },
             todo('documents/internal', 'Văn bản nội bộ', 'Quản lý văn bản'),
             todo('case-files', 'Hồ sơ lưu trữ', 'Quản lý văn bản'),
+
 
             // Công việc
             todo('tasks/new', 'Giao việc', 'Công việc'),

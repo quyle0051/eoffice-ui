@@ -1,0 +1,264 @@
+<div class="page-header">
+  <h2>{{ editId() ? 'Cập nhật văn bản đi' : 'Đăng ký & Cấp số văn bản đi' }}</h2>
+  <div class="breadcrumb">
+    <a routerLink="/home">Tổng quan</a>
+    <span>/</span>
+    <a routerLink="/documents/outgoing">Văn bản đi</a>
+    <span>/</span>
+    <span class="current">{{ editId() ? 'Cập nhật' : 'Đăng ký mới' }}</span>
+  </div>
+</div>
+
+@if (errorMessage()) {
+  <div class="alert-error">{{ errorMessage() }}</div>
+}
+
+<form class="form-card" (ngSubmit)="save(false)">
+  <!-- NHÓM 1: MÃ HỒ SƠ & SỔ VĂN BẢN ĐI (MỤC 1, 2, 3, 4, 5, 6) -->
+  <div class="section-title">I. Thông tin Sổ đăng ký, Cấp số &amp; Hồ sơ văn bản đi</div>
+  <div class="grid-4">
+    <div class="form-group">
+      <label>Sổ văn bản đi <span class="required">*</span></label>
+      <select
+        name="documentBookId"
+        [(ngModel)]="documentBookId"
+        (ngModelChange)="onBookOrTypeChange()"
+        required
+      >
+        @for (b of books(); track b.id) {
+          <option [ngValue]="b.id">{{ b.name }}{{ b.shortName ? ' (' + b.shortName + ')' : '' }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>3. Tên loại văn bản (TypeName) <span class="required">*</span></label>
+      <select
+        name="documentTypeId"
+        [(ngModel)]="documentTypeId"
+        (ngModelChange)="onBookOrTypeChange()"
+        required
+      >
+        @for (t of types(); track t.id) {
+          <option [ngValue]="t.id">{{ t.name }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>4. Số của văn bản (CodeNumber) <span class="required">*</span></label>
+      <input
+        type="text"
+        name="codeNumber"
+        maxlength="11"
+        [(ngModel)]="codeNumber"
+        placeholder="Tự động cấp số..."
+        required
+      />
+    </div>
+
+    <div class="form-group">
+      <label>5. Ký hiệu văn bản (CodeNotation) <span class="required">*</span></label>
+      <input
+        type="text"
+        name="codeNotation"
+        maxlength="30"
+        [(ngModel)]="codeNotation"
+        placeholder="VD: /QĐ-UBND"
+        required
+      />
+    </div>
+
+    <div class="form-group">
+      <label>6. Ngày ban hành (IssuedDate) <span class="required">*</span></label>
+      <input type="date" name="issuedDate" [(ngModel)]="issuedDate" required />
+    </div>
+    </div>
+
+  <!-- NHÓM 2: NỘI DUNG, NGƯỜI KÝ & ĐỘ KHẨN (MỤC 7 -> 12, 14, 15, 16) -->
+  <div class="section-title">II. Nội dung trích yếu, Người ký &amp; Thời hạn trả lời</div>
+  <div class="grid-4">
+    <div class="form-group span-2">
+      <label>7. Cơ quan ban hành văn bản (OrganName) <span class="required">*</span></label>
+      <input type="text" name="organName" maxlength="200" [(ngModel)]="organName" required />
+    </div>
+
+    <div class="form-group">
+      <label>12.1 Chức vụ người ký (Position)</label>
+      <input
+        type="text"
+        name="signerPosition"
+        maxlength="100"
+        [(ngModel)]="signerPosition"
+        placeholder="VD: Giám đốc"
+      />
+    </div>
+
+    <div class="form-group">
+      <label>12.2 Họ tên người ký (FullName)</label>
+      <input
+        type="text"
+        name="signerFullName"
+        maxlength="50"
+        [(ngModel)]="signerFullName"
+        placeholder="Nhập họ tên người ký..."
+      />
+    </div>
+
+    <div class="form-group span-4">
+      <label>8. Trích yếu nội dung văn bản đi (Subject) <span class="required">*</span></label>
+      <textarea
+        name="subject"
+        rows="2"
+        maxlength="500"
+        [(ngModel)]="subject"
+        placeholder="Nhập trích yếu nội dung văn bản đi..."
+        required
+      ></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>14. Mức độ khẩn (Priority)</label>
+      <select name="priority" [(ngModel)]="priority">
+        <option [ngValue]="0">Bình thường</option>
+        <option [ngValue]="1">Khẩn</option>
+        <option [ngValue]="2">Thượng khẩn</option>
+        <option [ngValue]="3">Hỏa tốc</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>15. Số bản phát hành (IssuedAmount)</label>
+      <input type="number" name="issuedAmount" min="1" max="999" [(ngModel)]="issuedAmount" />
+    </div>
+
+    <div class="form-group">
+      <label>16. Hạn trả lời văn bản (DueDate)</label>
+      <input type="date" name="dueDate" [(ngModel)]="dueDate" />
+    </div>
+
+    <div class="form-group">
+      <label>9. Ngôn ngữ &amp; 10. Số trang</label>
+      <div style="display: flex; gap: 6px">
+        <input type="text" name="language" style="flex: 1" [(ngModel)]="language" />
+        <input type="number" name="pageAmount" min="1" style="width: 75px" [(ngModel)]="pageAmount" />
+      </div>
+    </div>
+
+    <div class="form-group span-2">
+      <label>11. Ghi chú (Description)</label>
+      <input type="text" name="description" maxlength="500" [(ngModel)]="description" />
+    </div>
+
+    <div class="form-group span-2">
+      <label>Tệp văn bản đi đính kèm (PDF/Word đã ký số hoặc đóng dấu)</label>
+      <input type="file" (change)="onFileSelected($event)" />
+      @if (existingAttachmentName()) {
+        <div class="sub-hint">Tệp hiện tại: <strong>{{ existingAttachmentName() }}</strong></div>
+      }
+    </div>
+  </div>
+
+  <!-- NHÓM 3: NƠI NHẬN VĂN BẢN ĐI BÊN NGOÀI (MỤC 13.1 & 13.2) -->
+  <div class="section-title">III. Nơi nhận văn bản đi (Mục 13: Cơ quan, tổ chức bên ngoài nhận văn bản)</div>
+
+  <div class="recipient-adder">
+    <div class="form-group">
+      <label>Chọn nhanh từ Danh mục cơ quan</label>
+      <select
+        name="presetOrgan"
+        [(ngModel)]="selectedOrganPresetId"
+        (ngModelChange)="onSelectPresetOrgan($event)"
+      >
+        <option [ngValue]="null">-- Chọn cơ quan có sẵn hoặc tự nhập bên cạnh --</option>
+        @for (o of organs(); track o.id) {
+          <option [ngValue]="o.id">{{ o.organId }} — {{ o.organName }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>13.1 Mã định danh CQ nhận (OrganId)</label>
+      <input
+        type="text"
+        name="newRecOrganId"
+        maxlength="13"
+        placeholder="VD: 000.00.14.H29"
+        [(ngModel)]="newRecOrganId"
+      />
+    </div>
+
+    <div class="form-group">
+      <label>13.2 Tên cơ quan, tổ chức nhận (OrganName)</label>
+      <input
+        type="text"
+        name="newRecOrganName"
+        maxlength="200"
+        placeholder="Nhập tên cơ quan nhận..."
+        [(ngModel)]="newRecOrganName"
+      />
+    </div>
+
+    <div class="form-group">
+      <label>Số bản &amp; Phương thức gửi</label>
+      <div style="display: flex; gap: 6px">
+        <input type="number" name="newRecCopies" min="1" style="width: 65px" [(ngModel)]="newRecCopies" />
+        <select name="newRecMethod" [(ngModel)]="newRecMethod" style="flex: 1">
+          <option value="TRUC_LIEN_THONG">Trục liên thông</option>
+          <option value="EMAIL">Email công vụ</option>
+          <option value="BUU_DIEN">Bưu điện</option>
+          <option value="TRUC_TIEP">Trực tiếp</option>
+        </select>
+        <button type="button" class="btn-primary" (click)="addRecipient()">+ Thêm nơi nhận</button>
+      </div>
+    </div>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 50px">STT</th>
+        <th style="width: 160px">13.1 MÃ ĐỊNH DANH (OrganId)</th>
+        <th>13.2 TÊN CƠ QUAN, TỔ CHỨC NHẬN VĂN BẢN (OrganName)</th>
+        <th style="width: 90px">SỐ BẢN</th>
+        <th style="width: 160px">PHƯƠNG THỨC GỬI</th>
+        <th style="width: 80px">XÓA</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (r of recipients(); track $index; let i = $index) {
+        <tr>
+          <td class="text-center">{{ i + 1 }}</td>
+          <td class="text-center"><strong>{{ r.organId }}</strong></td>
+          <td>{{ r.organName }}</td>
+          <td class="text-center">{{ r.copies }}</td>
+          <td class="text-center">{{ r.deliveryMethod }}</td>
+          <td class="text-center">
+            <button type="button" class="btn-remove" (click)="removeRecipient(i)">Xóa</button>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="6" class="empty-cell">
+            Chưa có cơ quan nhận nào. Hãy chọn từ danh mục hoặc nhập Mã định danh + Tên cơ quan nhận rồi bấm "+ Thêm nơi nhận".
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  <div class="form-actions">
+    <a routerLink="/documents/outgoing" class="btn-secondary">Quay lại</a>
+    <button type="submit" class="btn-secondary" [disabled]="submitting()">
+      Lưu đăng ký &amp; Cấp số
+    </button>
+    <button
+      type="button"
+      class="btn-primary"
+      [disabled]="submitting()"
+      (click)="save(true)"
+    >
+      {{ submitting() ? 'Đang xử lý...' : 'Đăng ký & Phát hành ngay' }}
+    </button>
+  </div>
+</form>
