@@ -20,6 +20,7 @@
         type="text"
         placeholder="Trích yếu, số/ký hiệu, cơ quan ban hành..."
         [(ngModel)]="keyword"
+        (ngModelChange)="onKeywordInput($event)"
       />
     </div>
 
@@ -54,10 +55,75 @@
     </div>
   </div>
 
+  @if (showAdvanced) {
+    <div class="filter-grid advanced-grid">
+      <div class="filter-group">
+        <label for="status">Trạng thái xử lý</label>
+        <select id="status" name="status" [ngModel]="selectedStatus"
+                (ngModelChange)="selectedStatus = $event; onSearch()">
+          <option value="">-- Tất cả --</option>
+          @for (s of statusOptions; track s.value) {
+            <option [value]="s.value">{{ s.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="priority">Mức độ khẩn</label>
+        <select id="priority" name="priority" [ngModel]="selectedPriority"
+                (ngModelChange)="selectedPriority = $event; onSearch()">
+          <option [ngValue]="null">-- Tất cả --</option>
+          <option [ngValue]="0">Thường</option>
+          <option [ngValue]="1">Khẩn</option>
+          <option [ngValue]="2">Thượng khẩn</option>
+          <option [ngValue]="3">Hỏa tốc</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="signer">Người ký</label>
+        <input id="signer" name="signer" type="text" placeholder="Họ tên người ký" [(ngModel)]="signer" />
+      </div>
+
+      <div class="filter-group">
+        <label for="organ">Nơi gửi (cơ quan ban hành)</label>
+        <input id="organ" name="organ" type="text" placeholder="Tên cơ quan" [(ngModel)]="organ" />
+      </div>
+
+      <div class="filter-group">
+        <label for="dueFrom">Hạn xử lý từ</label>
+        <input id="dueFrom" name="dueFrom" type="date" [ngModel]="dueFrom"
+               (ngModelChange)="dueFrom = $event; onSearch()" />
+      </div>
+
+      <div class="filter-group">
+        <label for="dueTo">Hạn xử lý đến</label>
+        <input id="dueTo" name="dueTo" type="date" [ngModel]="dueTo"
+               (ngModelChange)="dueTo = $event; onSearch()" />
+      </div>
+
+      <div class="filter-group check-group">
+        <label class="check-item">
+          <input type="checkbox" name="overdueOnly" [ngModel]="overdueOnly"
+                 (ngModelChange)="overdueOnly = $event; onSearch()" />
+          Chỉ văn bản quá hạn
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="withAttachment" [ngModel]="withAttachment"
+                 (ngModelChange)="withAttachment = $event; onSearch()" />
+          Có tệp đính kèm
+        </label>
+      </div>
+    </div>
+  }
+
   <div class="filter-actions">
     <div class="left-actions">
       <button type="submit" class="btn-primary">Tìm kiếm</button>
       <button type="button" class="btn-secondary" (click)="resetFilters()">Đặt lại</button>
+      <button type="button" class="btn-secondary" (click)="showAdvanced = !showAdvanced">
+        {{ showAdvanced ? 'Thu gọn' : 'Tìm nâng cao' }}
+      </button>
     </div>
 
     <a routerLink="/documents/incoming/new" class="btn-add">+ Thêm văn bản đến</a>
@@ -143,8 +209,10 @@
                     </a>
                   }
                   @if (canManageDoc()) {
-                  <button type="button" class="link-btn" (click)="editDocument(doc)">Sửa</button>
-                  <button type="button" class="link-btn danger" (click)="deleteDocument(doc)">Xóa</button>
+                    <button type="button" class="link-btn" (click)="editDocument(doc)">Sửa</button>
+                  }
+                  @if (canDeleteDoc(doc)) {
+                    <button type="button" class="link-btn danger" (click)="deleteDocument(doc)">Xóa</button>
                   }
                 </div>
               </td>

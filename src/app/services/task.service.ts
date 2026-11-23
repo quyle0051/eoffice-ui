@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { PageResponse } from './incoming-document.service';
+import { DispatchOptionsResponse, PageResponse } from './incoming-document.service';
 
 export type TaskFilterMode = 'ASSIGNED' | 'SUPPORTED' | 'SUPERVISED' | 'CREATED';
 
@@ -144,9 +144,23 @@ export class TaskService {
         );
     }
 
+    /** Kết thúc công việc (chỉ Người chủ trì) */
+    finishTask(taskId: number): Observable<TaskDetailResponse> {
+        return this.http.post<TaskDetailResponse>(`${this.api}/${taskId}/finish`, {}, {
+            withCredentials: true,
+        });
+    }
+
     /** Người chủ trì chia nhỏ công việc thành việc con (Sub-task) */
     createSubTask(parentTaskId: number, req: SubTaskCreateRequest): Observable<TaskResponse> {
         return this.http.post<TaskResponse>(`${this.api}/${parentTaskId}/subtasks`, req, {
+            withCredentials: true,
+        });
+    }
+
+    /** Danh sách người, phòng ban, nhóm mà Người chủ trì được phép chọn khi chia việc con */
+    getAssignableOptions(taskId: number): Observable<DispatchOptionsResponse> {
+        return this.http.get<DispatchOptionsResponse>(`${this.api}/${taskId}/assignable-options`, {
             withCredentials: true,
         });
     }

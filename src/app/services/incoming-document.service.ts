@@ -68,6 +68,15 @@ export interface IncomingSearchParams {
     documentTypeId?: number | null;
     arrivalFrom?: string;
     arrivalTo?: string;
+    // Tìm nâng cao
+    status?: string;
+    priority?: number | null;
+    signer?: string;
+    organ?: string;
+    dueFrom?: string;
+    dueTo?: string;
+    overdue?: boolean;
+    hasAttachment?: boolean;
     page?: number;
     size?: number;
 }
@@ -186,6 +195,30 @@ export class IncomingDocumentService {
         }
         if (params.arrivalTo) {
             httpParams = httpParams.set('arrivalTo', params.arrivalTo);
+        }
+        if (params.status) {
+            httpParams = httpParams.set('status', params.status);
+        }
+        if (params.priority !== null && params.priority !== undefined) {
+            httpParams = httpParams.set('priority', String(params.priority));
+        }
+        if (params.signer && params.signer.trim()) {
+            httpParams = httpParams.set('signer', params.signer.trim());
+        }
+        if (params.organ && params.organ.trim()) {
+            httpParams = httpParams.set('organ', params.organ.trim());
+        }
+        if (params.dueFrom) {
+            httpParams = httpParams.set('dueFrom', params.dueFrom);
+        }
+        if (params.dueTo) {
+            httpParams = httpParams.set('dueTo', params.dueTo);
+        }
+        if (params.overdue) {
+            httpParams = httpParams.set('overdue', 'true');
+        }
+        if (params.hasAttachment) {
+            httpParams = httpParams.set('hasAttachment', 'true');
         }
 
         return this.http.get<PageResponse<IncomingDocumentResponse>>(this.api, {

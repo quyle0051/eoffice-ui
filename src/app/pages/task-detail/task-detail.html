@@ -37,17 +37,32 @@
         <span>Tiến độ: <strong>{{ t.progressPercent }}%</strong></span>
         <span>|</span>
         <label for="statusSelect">Trạng thái:</label>
-        <select
-          id="statusSelect"
-          [disabled]="!canUpdateStatus()"
-          [ngModel]="t.status"
-          (ngModelChange)="onStatusChange($event)"
-        >
-          <option value="NEW">Mới giao</option>
-          <option value="IN_PROGRESS">Đang thực hiện</option>
-          <option value="COMPLETED">Hoàn thành</option>
-          <option value="CANCELLED">Đã hủy</option>
-        </select>
+        @if (t.status === 'NEW' || t.status === 'IN_PROGRESS') {
+          <select
+            id="statusSelect"
+            [disabled]="!canUpdateStatus()"
+            [ngModel]="t.status"
+            (ngModelChange)="onStatusChange($event)"
+          >
+            <option value="NEW">Mới giao</option>
+            <option value="IN_PROGRESS">Đang thực hiện</option>
+            <!-- <option value="COMPLETED">Hoàn thành</option> -->
+            <!-- <option value="CANCELLED">Đã hủy</option> -->
+          </select>
+        } @else {
+          <span class="status-badge" [attr.data-status]="t.status">{{ statusLabel(t.status) }}</span>
+        }
+
+        @if (canFinish()) {
+          <button
+            type="button"
+            class="btn-finish"
+            [disabled]="finishing()"
+            (click)="finishTask()"
+          >
+            {{ finishing() ? 'Đang xử lý...' : 'Kết thúc công việc' }}
+          </button>
+        }
       </div>
     </div>
 

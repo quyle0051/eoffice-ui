@@ -11,6 +11,8 @@ import { TaskList } from './pages/task-list/task-list';
 import { TaskDetail } from './pages/task-detail/task-detail';
 import { OutgoingDocuments } from './pages/outgoing-documents/outgoing-documents';
 import { OutgoingDocumentForm } from './pages/outgoing-document-form/outgoing-document-form';
+import { InternalDocuments } from './pages/internal-documents/internal-documents';
+import { InternalDocumentForm } from './pages/internal-document-form/internal-document-form';
 
 const todo = (path: string, title: string, group: string) => ({
     path,
@@ -33,7 +35,6 @@ export const routes: Routes = [
             { path: 'documents/outgoing', component: OutgoingDocuments },
             { path: 'documents/outgoing/new', component: OutgoingDocumentForm },
             { path: 'documents/outgoing/:id/edit', component: OutgoingDocumentForm },
-            todo('documents/internal', 'Văn bản nội bộ', 'Quản lý văn bản'),
             todo('case-files', 'Hồ sơ lưu trữ', 'Quản lý văn bản'),
 
 

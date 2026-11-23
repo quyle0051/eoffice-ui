@@ -92,6 +92,13 @@ export class OutgoingDocumentService {
         status?: string;
         fromDate?: string;
         toDate?: string;
+        priority?: number | null;
+        signer?: string;
+        recipient?: string;
+        dueFrom?: string;
+        dueTo?: string;
+        overdue?: boolean;
+        hasAttachment?: boolean;
         page?: number;
         size?: number;
     }): Observable<PageResponse<OutgoingDocumentResponse>> {
@@ -105,6 +112,14 @@ export class OutgoingDocumentService {
         if (filters.status) params = params.set('status', filters.status);
         if (filters.fromDate) params = params.set('fromDate', filters.fromDate);
         if (filters.toDate) params = params.set('toDate', filters.toDate);
+
+        if (filters.priority !== null && filters.priority !== undefined) params = params.set('priority', filters.priority);
+        if (filters.signer?.trim()) params = params.set('signer', filters.signer.trim());
+        if (filters.recipient?.trim()) params = params.set('recipient', filters.recipient.trim());
+        if (filters.dueFrom) params = params.set('dueFrom', filters.dueFrom);
+        if (filters.dueTo) params = params.set('dueTo', filters.dueTo);
+        if (filters.overdue) params = params.set('overdue', 'true');
+        if (filters.hasAttachment) params = params.set('hasAttachment', 'true');
 
         return this.http.get<PageResponse<OutgoingDocumentResponse>>(this.api, {
             params,

@@ -1,24 +1,10 @@
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import {
-    DepartmentOption,
-    DispatchOptionsResponse,
-    IncomingDocumentService,
-    UserOption,
-} from '../../services/incoming-document.service';
-import {
-    SubTaskCreateRequest,
-    TaskDetailResponse,
-    TaskPostResponse,
-    TaskService,
-} from '../../services/task.service';
+import { DepartmentOption, DispatchOptionsResponse, IncomingDocumentService, UserOption, } from '../../services/incoming-document.service';
+import { SubTaskCreateRequest, TaskDetailResponse, TaskPostResponse, TaskService, } from '../../services/task.service';
 import { AuthService } from '../../services/auth.service';
-import {
-    DeptRoleSelection,
-    DispatchTableRow,
-    PickerType,
-} from '../incoming-document-dispatch/incoming-document-dispatch';
+import { DeptRoleSelection, DispatchTableRow, PickerType, } from '../incoming-document-dispatch/incoming-document-dispatch';
 
 @Component({
     selector: 'app-task-detail',
@@ -43,11 +29,18 @@ export class TaskDetail implements OnInit {
         return t.assigneeEmail?.toLowerCase() === myEmail.toLowerCase();
     });
 
+    // Chỉ Người chủ trì của công việc này mới được kết thúc (và chưa kết thúc)
+    canFinish = computed(() => {
+        const t = this.task();
+        return this.isMainAssignee() && !!t && t.status !== 'COMPLETED';
+    });
+    finishing = signal(false);
+
     // Kiểm tra người đăng nhập có quyền cập nhật trạng thái (Chủ trì hoặc Người giao)
     canUpdateStatus = computed(() => {
         const t = this.task();
         const myEmail = this.authService.user()?.email;
-        if (!t || !myEmail) return false;
+        if (!t || !myEmail || t.status === 'COMPLETED') return false;
         return (
             t.assigneeEmail?.toLowerCase() === myEmail.toLowerCase() ||
             t.creatorEmail?.toLowerCase() === myEmail.toLowerCase() ||
@@ -122,9 +115,24 @@ export class TaskDetail implements OnInit {
                 this.loadTaskDetail(id);
             }
         });
+    }
 
-        this.docService.getDispatchOptions().subscribe({
+    private optionsTaskId: number | null = null;
+
+    private loadAssignableOptions(taskId: number) {
+        if (!this.isMainAssignee()) {
+            this.options.set(null);
+            this.optionsTaskId = null;
+            return;
+        }
+        if (this.optionsTaskId === taskId) return;
+        this.optionsTaskId = taskId;
+        this.taskService.getAssignableOptions(taskId).subscribe({
             next: (opts) => this.options.set(opts),
+            error: () => {
+                this.options.set(null);
+                this.optionsTaskId = null;
+            },
         });
     }
 
@@ -137,6 +145,7 @@ export class TaskDetail implements OnInit {
                 this.progressPercent = data.progressPercent ?? 0;
                 this.subTaskDueDate = data.endTime ? data.endTime.slice(0, 10) : '';
                 this.loading.set(false);
+                this.loadAssignableOptions(id);
             },
             error: (err) => {
                 this.loading.set(false);
@@ -153,6 +162,36 @@ export class TaskDetail implements OnInit {
             },
             error: (err) => {
                 this.errorMessage.set(err.error?.message ?? 'Không thể cập nhật trạng thái công việc');
+            },
+        });
+    }
+
+    /** Người chủ trì kết thúc công việc (việc gốc: văn bản đến -> Hoàn thành; việc con: không ảnh hưởng văn bản) */
+    finishTask() {
+        const t = this.task();
+        if (!t || !this.canFinish() || this.finishing()) return;
+
+        const openSubTasks = (t.subTasks ?? []).filter((s) => s.status !== 'COMPLETED').length;
+        let message = `Xác nhận kết thúc công việc "${t.title}"?`;
+        if (openSubTasks > 0) {
+            message += `\n\nLưu ý: còn ${openSubTasks} việc con chưa kết thúc.`;
+        }
+        if (!t.parentTaskId && t.incomingDocumentId) {
+            message += '\n\nKhi tất cả công việc của văn bản đến này đã kết thúc, văn bản sẽ chuyển sang "Hoàn thành".';
+        }
+        if (!window.confirm(message)) return;
+
+        this.finishing.set(true);
+        this.errorMessage.set('');
+        this.taskService.finishTask(this.taskId()).subscribe({
+            next: (updated) => {
+                this.finishing.set(false);
+                this.task.set(updated);
+                this.progressPercent = updated.progressPercent ?? this.progressPercent;
+            },
+            error: (err) => {
+                this.finishing.set(false);
+                this.errorMessage.set(err.error?.message ?? 'Không thể kết thúc công việc');
             },
         });
     }
@@ -556,6 +595,8 @@ export class TaskDetail implements OnInit {
                 return 'Đang thực hiện';
             case 'COMPLETED':
                 return 'Hoàn thành';
+            case 'OVERDUE':
+                return 'Quá hạn';
             case 'CANCELLED':
                 return 'Đã hủy';
             default:

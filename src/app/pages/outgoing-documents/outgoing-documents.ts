@@ -1,6 +1,7 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { DocumentBookResponse, DocumentBookService } from '../../services/document-book.service';
 import { DocumentTypeResponse, DocumentTypeService } from '../../services/document-type.service';
 import {
@@ -26,6 +27,25 @@ export class OutgoingDocuments implements OnInit {
     selectedStatus = '';
     fromDate = '';
     toDate = '';
+
+    // Tìm nâng cao
+    showAdvanced = false;
+    readonly statusOptions = [
+        { value: 'REGISTERED', label: 'Đã cấp số (Chờ phát hành)' },
+        { value: 'ISSUED', label: 'Đã phát hành' },
+        { value: 'ARCHIVED', label: 'Đã lưu trữ' },
+    ];
+    selectedPriority: number | null = null;
+    signer = '';
+    recipient = '';
+    dueFrom = '';
+    dueTo = '';
+    overdueOnly = false;
+    withAttachment = false;
+
+    private keyword$ = new Subject<string>();
+    private keywordSub?: Subscription;
+    private searchSub?: Subscription;
 
     // Dữ liệu bảng & phân trang
     documents = signal<OutgoingDocumentResponse[]>([]);
@@ -60,6 +80,20 @@ export class OutgoingDocuments implements OnInit {
         });
 
         this.loadDocuments();
+
+        this.keywordSub = this.keyword$
+            .pipe(debounceTime(300), distinctUntilChanged())
+            .subscribe(() => this.onSearch());
+    }
+
+    ngOnDestroy() {
+        this.keywordSub?.unsubscribe();
+        this.searchSub?.unsubscribe();
+    }
+
+    onKeywordInput(value: string) {
+        this.keyword = value;
+        this.keyword$.next(value);
     }
 
     onSearch() {
@@ -74,6 +108,13 @@ export class OutgoingDocuments implements OnInit {
         this.selectedStatus = '';
         this.fromDate = '';
         this.toDate = '';
+        this.selectedPriority = null;
+        this.signer = '';
+        this.recipient = '';
+        this.dueFrom = '';
+        this.dueTo = '';
+        this.overdueOnly = false;
+        this.withAttachment = false;
         this.page.set(0);
         this.loadDocuments();
     }
@@ -82,7 +123,8 @@ export class OutgoingDocuments implements OnInit {
         this.loading.set(true);
         this.errorMessage.set('');
 
-        this.outgoingService
+        this.searchSub?.unsubscribe();
+        this.searchSub = this.outgoingService
             .search({
                 keyword: this.keyword,
                 bookId: this.selectedBookId,
@@ -90,6 +132,13 @@ export class OutgoingDocuments implements OnInit {
                 status: this.selectedStatus,
                 fromDate: this.fromDate,
                 toDate: this.toDate,
+                priority: this.selectedPriority,
+                signer: this.signer,
+                recipient: this.recipient,
+                dueFrom: this.dueFrom,
+                dueTo: this.dueTo,
+                overdue: this.overdueOnly,
+                hasAttachment: this.withAttachment,
                 page: this.page(),
                 size: this.size(),
             })
@@ -206,6 +255,10 @@ export class OutgoingDocuments implements OnInit {
         const hours = String(d.getHours()).padStart(2, '0');
         const mins = String(d.getMinutes()).padStart(2, '0');
         return `${day}/${month}/${year} ${hours}:${mins}`;
+    }
+
+    isUrgent(p: number | null | undefined): boolean {
+        return p !== null && p !== undefined && p > 0;
     }
 
     priorityLabel(p: number): string {

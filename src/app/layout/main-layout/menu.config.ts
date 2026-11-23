@@ -20,7 +20,7 @@ export const MENU: MenuGroup[] = [
             { label: 'Văn bản đến', link: '/documents/incoming' },
             { label: 'Văn bản đi', link: '/documents/outgoing' },
             { label: 'Văn bản nội bộ', link: '/documents/internal' },
-            { label: 'Hồ sơ lưu trữ', link: '/case-files' },
+            //{ label: 'Hồ sơ lưu trữ', link: '/case-files' },
         ],
     },
     {

@@ -1,6 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import {
     DispatchOptionsResponse,
     IncomingDocumentResponse,
@@ -45,6 +46,30 @@ export class IncomingDocuments implements OnInit {
     arrivalFrom = '';
     arrivalTo = '';
 
+    // Tìm nâng cao
+    showAdvanced = false;
+    selectedStatus = '';
+    selectedPriority: number | null = null;
+    signer = '';
+    organ = '';
+    dueFrom = '';
+    dueTo = '';
+    overdueOnly = false;
+    withAttachment = false;
+
+    readonly statusOptions = [
+        { value: 'NEW', label: 'Mới vào sổ' },
+        { value: 'WAITING_OFFICE_CHIEF', label: 'Chờ Chánh VP' },
+        { value: 'WAITING_DIRECTOR', label: 'Chờ Giám đốc duyệt' },
+        { value: 'APPROVED_WAITING_DISPATCH', label: 'Đã duyệt - Chờ chuyển' },
+        { value: 'DISPATCHED', label: 'Đã chuyển xử lý' },
+        { value: 'COMPLETED', label: 'Hoàn thành' },
+    ];
+
+    private keyword$ = new Subject<string>();
+    private keywordSub?: Subscription;
+    private searchSub?: Subscription;
+
     documents = signal<IncomingDocumentResponse[]>([]);
     page = signal(0);
     size = signal(10);
@@ -83,6 +108,19 @@ export class IncomingDocuments implements OnInit {
     ngOnInit() {
         this.loadFilterMetadata();
         this.loadDocuments();
+        this.keywordSub = this.keyword$
+            .pipe(debounceTime(300), distinctUntilChanged())
+            .subscribe(() => this.onSearch());
+    }
+
+    ngOnDestroy() {
+        this.keywordSub?.unsubscribe();
+        this.searchSub?.unsubscribe();
+    }
+
+    onKeywordInput(value: string) {
+        this.keyword = value;
+        this.keyword$.next(value);
     }
 
     loadFilterMetadata() {
@@ -97,13 +135,22 @@ export class IncomingDocuments implements OnInit {
         this.loading.set(true);
         this.pageError.set('');
 
-        this.docService
+        this.searchSub?.unsubscribe();   // hủy request đang chạy dở để kết quả không về lộn thứ tự
+        this.searchSub = this.docService
             .search({
                 keyword: this.keyword,
                 documentBookId: this.selectedBookId,
                 documentTypeId: this.selectedTypeId,
                 arrivalFrom: this.arrivalFrom || undefined,
                 arrivalTo: this.arrivalTo || undefined,
+                status: this.selectedStatus || undefined,
+                priority: this.selectedPriority,
+                signer: this.signer || undefined,
+                organ: this.organ || undefined,
+                dueFrom: this.dueFrom || undefined,
+                dueTo: this.dueTo || undefined,
+                overdue: this.overdueOnly || undefined,
+                hasAttachment: this.withAttachment || undefined,
                 page: this.page(),
                 size: this.size(),
             })
@@ -136,6 +183,14 @@ export class IncomingDocuments implements OnInit {
         this.selectedTypeId = null;
         this.arrivalFrom = '';
         this.arrivalTo = '';
+        this.selectedStatus = '';
+        this.selectedPriority = null;
+        this.signer = '';
+        this.organ = '';
+        this.dueFrom = '';
+        this.dueTo = '';
+        this.overdueOnly = false;
+        this.withAttachment = false;
         this.page.set(0);
         this.loadDocuments();
     }
@@ -311,6 +366,10 @@ export class IncomingDocuments implements OnInit {
 
     canManageDoc(): boolean {
         return this.authService.hasAnyRole(['ADMIN', 'CLERK']);
+    }
+
+    canDeleteDoc(doc: IncomingDocumentResponse): boolean {
+        return this.canManageDoc() && (doc.status || 'NEW') === 'NEW';
     }
 
     statusLabel(status?: string): string {

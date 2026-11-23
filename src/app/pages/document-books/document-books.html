@@ -46,7 +46,7 @@
             <th>Tên sổ văn bản</th>
             <th style="width: 150px">Tên viết tắt</th>
             <th>Sổ cha</th>
-            <th style="width: 160px; text-align: center">Số ngày xử lý chuẩn</th>
+            <!-- <th style="width: 160px; text-align: center">Số ngày xử lý chuẩn</th> -->
             <th style="width: 150px; text-align: right">Thao tác</th>
           </tr>
         </thead>
@@ -62,14 +62,14 @@
                   <span class="text-muted">—</span>
                 }
               </td>
-              <td>{{ b.parentName ?? '— (Sổ gốc)' }}</td>
-              <td style="text-align: center">
+              <td>{{ b.parentName ?? '(Sổ gốc)' }}</td>
+              <!-- <td style="text-align: center">
                 @if (b.standardDays !== null && b.standardDays !== undefined) {
                   {{ b.standardDays }} ngày
                 } @else {
                   <span class="text-muted">—</span>
                 }
-              </td>
+              </td> -->
               <td class="actions">
                 <button type="button" class="btn-action edit" (click)="openEditModal(b)">
                   Sửa

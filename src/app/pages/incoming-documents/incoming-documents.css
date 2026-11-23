@@ -673,3 +673,30 @@
     font-weight: 600;
     color: #344054;
 }
+
+/* Tìm kiếm nâng cao */
+.advanced-grid {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed #dfe5ee;
+}
+
+.check-group {
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #344054;
+    cursor: pointer;
+}
+
+.check-item input {
+    width: auto;
+    margin: 0;
+}
