@@ -1,0 +1,360 @@
+<div class="page-header">
+  <h2>Văn bản nội bộ</h2>
+  <div class="breadcrumb">
+    <a routerLink="/home">Tổng quan</a>
+    <span>/</span>
+    <span>Quản lý văn bản</span>
+    <span>/</span>
+    <span class="current">Văn bản nội bộ</span>
+  </div>
+</div>
+
+<!-- Khung bộ lọc tìm kiếm -->
+<form class="filter-card" (ngSubmit)="onSearch()">
+  <div class="filter-grid">
+    <div class="filter-group filter-keyword">
+      <label for="kw">Từ khóa</label>
+      <input
+        id="kw"
+        name="keyword"
+        type="text"
+        placeholder="Trích yếu, số/ký hiệu, người ký... (gõ có dấu hoặc không dấu đều được)"
+        [ngModel]="keyword"
+        (ngModelChange)="onKeywordInput($event)"
+      />
+    </div>
+
+    <div class="filter-group">
+      <label for="bookId">Sổ văn bản</label>
+      <select id="bookId" name="bookId" [(ngModel)]="selectedBookId">
+        <option [ngValue]="null">-- Tất cả sổ --</option>
+        @for (b of books(); track b.id) {
+          <option [ngValue]="b.id">{{ b.name }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="typeId">Loại văn bản</label>
+      <select id="typeId" name="typeId" [(ngModel)]="selectedTypeId">
+        <option [ngValue]="null">-- Tất cả loại --</option>
+        @for (t of types(); track t.id) {
+          <option [ngValue]="t.id">{{ t.name }} ({{ t.abbreviation }})</option>
+        }
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="fromDate">Ngày ban hành từ</label>
+      <input id="fromDate" name="fromDate" type="date" [(ngModel)]="fromDate" />
+    </div>
+
+    <div class="filter-group">
+      <label for="toDate">Đến ngày</label>
+      <input id="toDate" name="toDate" type="date" [(ngModel)]="toDate" />
+    </div>
+  </div>
+
+  @if (showAdvanced) {
+    <div class="filter-grid advanced-grid">
+      <div class="filter-group">
+        <label for="status">Trạng thái</label>
+        <select id="status" name="status" [ngModel]="selectedStatus"
+                (ngModelChange)="selectedStatus = $event; onSearch()">
+          <option value="">-- Tất cả --</option>
+          @for (s of statusOptions; track s.value) {
+            <option [value]="s.value">{{ s.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="priority">Mức độ khẩn</label>
+        <select id="priority" name="priority" [ngModel]="selectedPriority"
+                (ngModelChange)="selectedPriority = $event; onSearch()">
+          <option [ngValue]="null">-- Tất cả --</option>
+          <option [ngValue]="0">Thường</option>
+          <option [ngValue]="1">Khẩn</option>
+          <option [ngValue]="2">Thượng khẩn</option>
+          <option [ngValue]="3">Hỏa tốc</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="signer">Người ký</label>
+        <input id="signer" name="signer" type="text" placeholder="Họ tên người ký" [(ngModel)]="signer" />
+      </div>
+
+      <div class="filter-group">
+        <label for="dueFrom">Hạn xử lý từ</label>
+        <input id="dueFrom" name="dueFrom" type="date" [ngModel]="dueFrom"
+               (ngModelChange)="dueFrom = $event; onSearch()" />
+      </div>
+
+      <div class="filter-group">
+        <label for="dueTo">Hạn xử lý đến</label>
+        <input id="dueTo" name="dueTo" type="date" [ngModel]="dueTo"
+               (ngModelChange)="dueTo = $event; onSearch()" />
+      </div>
+
+      <div class="filter-group check-group">
+        <label class="check-item">
+          <input type="checkbox" name="overdueOnly" [ngModel]="overdueOnly"
+                 (ngModelChange)="overdueOnly = $event; onSearch()" />
+          Chỉ văn bản quá hạn xử lý
+        </label>
+        <label class="check-item">
+          <input type="checkbox" name="withAttachment" [ngModel]="withAttachment"
+                 (ngModelChange)="withAttachment = $event; onSearch()" />
+          Có tệp đính kèm
+        </label>
+      </div>
+    </div>
+  }
+
+  <div class="filter-actions">
+    <div class="left-actions">
+      <button type="submit" class="btn-primary">Tìm kiếm</button>
+      <button type="button" class="btn-secondary" (click)="resetFilters()">Đặt lại</button>
+      <button type="button" class="btn-secondary" (click)="showAdvanced = !showAdvanced">
+        {{ showAdvanced ? 'Thu gọn' : 'Tìm nâng cao' }}
+      </button>
+    </div>
+
+    @if (canManage()) {
+      <a routerLink="/documents/internal/new" class="btn-add">+ Đăng ký văn bản nội bộ</a>
+    }
+  </div>
+</form>
+
+@if (errorMessage()) {
+  <div class="alert-error">{{ errorMessage() }}</div>
+}
+
+<!-- Bảng danh sách văn bản nội bộ -->
+<div class="card">
+  @if (loading()) {
+    <div class="empty-state">Đang tải danh sách văn bản nội bộ...</div>
+  } @else if (documents().length === 0) {
+    <div class="empty-state">
+      <p class="empty-title">Không tìm thấy văn bản nội bộ nào</p>
+      <p class="empty-hint">Thử thay đổi bộ lọc tìm kiếm hoặc đăng ký văn bản nội bộ mới.</p>
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 105px">NGÀY BAN HÀNH</th>
+            <th style="width: 140px">SỐ, KÝ HIỆU</th>
+            <th style="width: 200px">NƠI NHẬN</th>
+            <th style="width: 150px">NGƯỜI KÝ</th>
+            <th>TÊN LOẠI VÀ TRÍCH YẾU NỘI DUNG</th>
+            <th style="width: 190px">THAO TÁC</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (d of documents(); track d.id) {
+            <tr>
+              <td class="text-center">{{ formatDate(d.issuedDate) }}</td>
+              <td>
+                <span class="code-text">{{ d.codeNumber }}{{ d.codeNotation }}</span>
+                @if (isUrgent(d.priority)) {
+                  <div style="margin-top: 4px">
+                    <span class="priority-badge urgent">{{ priorityLabel(d.priority) }}</span>
+                  </div>
+                }
+              </td>
+              <td>
+                {{ d.toPlaces || d.organName }}
+                <div class="sub-text">Văn bản nội bộ · Số bản: {{ d.issuedAmount }}</div>
+              </td>
+              <td>
+                {{ d.signerFullName || '—' }}
+                @if (d.signerPosition) {
+                  <div class="sub-text">{{ d.signerPosition }}</div>
+                }
+              </td>
+              <td>
+                <a class="doc-title-link" (click)="openDetail(d)">
+                  {{ d.documentTypeName }} - {{ d.subject }}
+                </a>
+                <div class="attachment-line">
+                  File đính kèm:
+                  @if (d.attachmentName) {
+                    <a
+                      class="attachment-link"
+                      [href]="docService.getAttachmentUrl(d.id)"
+                      target="_blank"
+                      [title]="d.attachmentName"
+                    >
+                      &#128206; {{ d.attachmentName }}
+                    </a>
+                  } @else {
+                    <span class="text-muted">Không có</span>
+                  }
+                </div>
+              </td>
+              <td class="actions-cell">
+                <div class="status-text">{{ statusLabel(d.status) }}</div>
+                @if (d.issuedTime) {
+                  <div class="sub-text">{{ formatDateTime(d.issuedTime) }}</div>
+                }
+                @if (canManage()) {
+                  <div class="action-links">
+                    @if (d.status === 'REGISTERED') {
+                      <button type="button" class="link-btn" (click)="issueDocument(d)">Ban hành</button>
+                      <button type="button" class="link-btn" (click)="editDocument(d)">Sửa</button>
+                      <button type="button" class="link-btn danger" (click)="deleteDocument(d)">Xóa</button>
+                    }
+                    @if (d.status === 'ISSUED') {
+                      <button type="button" class="link-btn" (click)="archiveDocument(d)">Lưu trữ</button>
+                    }
+                  </div>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Thanh phân trang -->
+    <div class="pagination-bar">
+      <div class="page-info">
+        Tổng số <strong>{{ totalElements() }}</strong> văn bản — Trang
+        <strong>{{ totalPages() > 0 ? page() + 1 : 0 }}</strong> / {{ totalPages() }}
+      </div>
+
+      <div class="page-controls">
+        <label for="pageSize" class="size-label">Hiển thị:</label>
+        <select
+          id="pageSize"
+          [ngModel]="size()"
+          (ngModelChange)="onSizeChange($event)"
+          class="size-select"
+        >
+          <option [ngValue]="10">10 / trang</option>
+          <option [ngValue]="20">20 / trang</option>
+          <option [ngValue]="50">50 / trang</option>
+        </select>
+
+        <button type="button" class="btn-page" [disabled]="page() <= 0" (click)="changePage(page() - 1)">
+          &laquo; Trước
+        </button>
+        <button
+          type="button"
+          class="btn-page"
+          [disabled]="page() + 1 >= totalPages()"
+          (click)="changePage(page() + 1)"
+        >
+          Sau &raquo;
+        </button>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- HỘP THOẠI: XEM CHI TIẾT VĂN BẢN NỘI BỘ -->
+@if (viewingDoc(); as v) {
+  <div class="modal-backdrop" (click)="closeDetail()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Chi tiết văn bản nội bộ: {{ v.codeNumber }}{{ v.codeNotation }}</h3>
+        <button type="button" class="close-btn" (click)="closeDetail()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-subject">
+          {{ v.subject }}
+          <span class="status-badge" style="margin-left: 8px" [attr.data-status]="v.status">
+            {{ statusLabel(v.status) }}
+          </span>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Sổ văn bản:</span>
+            <span class="detail-val">{{ v.documentBookName }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Loại văn bản:</span>
+            <span class="detail-val">{{ v.documentTypeName }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Số / Ký hiệu:</span>
+            <span class="detail-val">{{ v.codeNumber }}{{ v.codeNotation }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Ngày ban hành:</span>
+            <span class="detail-val">{{ formatDate(v.issuedDate) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Cơ quan ban hành:</span>
+            <span class="detail-val">{{ v.organName }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Nơi nhận:</span>
+            <span class="detail-val">{{ v.toPlaces || v.organName }} (nội bộ)</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Người ký:</span>
+            <span class="detail-val">
+              {{ v.signerFullName || '—' }} {{ v.signerPosition ? '(' + v.signerPosition + ')' : '' }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Ngôn ngữ / Số trang:</span>
+            <span class="detail-val">{{ v.language || '—' }} ({{ v.pageAmount }} trang)</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Mức độ khẩn:</span>
+            <span class="detail-val">{{ priorityLabel(v.priority) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Số bản phát hành:</span>
+            <span class="detail-val">{{ v.issuedAmount }} bản</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Hạn xử lý:</span>
+            <span class="detail-val">{{ formatDate(v.dueDate) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Thời gian ban hành:</span>
+            <span class="detail-val">{{ v.issuedTime ? formatDateTime(v.issuedTime) : '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Người đăng ký:</span>
+            <span class="detail-val">{{ v.createdByName || '—' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Ghi chú:</span>
+            <span class="detail-val">{{ v.description || '—' }}</span>
+          </div>
+        </div>
+
+        <div class="detail-block">
+          <div class="detail-label">Tệp văn bản đính kèm:</div>
+          @if (v.attachmentName) {
+            <a class="attachment-link" [href]="docService.getAttachmentUrl(v.id)" target="_blank">
+              &#128206; {{ v.attachmentName }} (bấm để mở xem hoặc tải về)
+            </a>
+          } @else {
+            <span class="text-muted">Chưa có tệp đính kèm</span>
+          }
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        @if (canManage() && v.status === 'REGISTERED') {
+          <button type="button" class="btn-primary" (click)="issueDocument(v)">Ban hành văn bản</button>
+          <button type="button" class="btn-secondary" (click)="editDocument(v)">Sửa thông tin</button>
+        }
+        @if (canManage() && v.status === 'ISSUED') {
+          <button type="button" class="btn-primary" (click)="archiveDocument(v)">Lưu trữ văn bản</button>
+        }
+        <button type="button" class="btn-secondary" (click)="closeDetail()">Đóng</button>
+      </div>
+    </div>
+  </div>
+}

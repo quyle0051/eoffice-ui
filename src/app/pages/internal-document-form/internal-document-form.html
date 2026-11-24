@@ -1,0 +1,236 @@
+<div class="page-header">
+  <h2>{{ isEditMode() ? 'Cập nhật văn bản nội bộ' : 'Đăng ký văn bản nội bộ' }}</h2>
+  <div class="breadcrumb">
+    <a routerLink="/home">Tổng quan</a>
+    <span>/</span>
+    <a routerLink="/documents/internal">Văn bản nội bộ</a>
+    <span>/</span>
+    <span class="current">{{ isEditMode() ? 'Cập nhật' : 'Đăng ký mới' }}</span>
+  </div>
+</div>
+
+@if (errorMessage()) {
+  <div class="alert-error">{{ errorMessage() }}</div>
+}
+
+@if (loading()) {
+  <div class="card empty-state">Đang tải thông tin văn bản...</div>
+} @else {
+  <form class="form-card" (ngSubmit)="saveDocument(false)" #docForm="ngForm">
+    <!-- Nhóm 1: Thông tin vào sổ -->
+    <div class="section-title">1. Thông tin vào sổ</div>
+    <div class="form-grid cols-4">
+      <div class="form-group span-2">
+        <label for="documentBookId">Sổ văn bản <span class="required">*</span></label>
+        <select
+          id="documentBookId"
+          name="documentBookId"
+          required
+          [disabled]="isEditMode()"
+          [(ngModel)]="documentBookId"
+          (ngModelChange)="onNumberingChange()"
+        >
+          <option [ngValue]="null">-- Chọn sổ văn bản --</option>
+          @for (b of books(); track b.id) {
+            <option [ngValue]="b.id">{{ b.name }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="documentTypeId">Loại văn bản <span class="required">*</span></label>
+        <select
+          id="documentTypeId"
+          name="documentTypeId"
+          required
+          [(ngModel)]="documentTypeId"
+          (ngModelChange)="onNumberingChange()"
+        >
+          <option [ngValue]="null">-- Chọn loại văn bản --</option>
+          @for (t of types(); track t.id) {
+            <option [ngValue]="t.id">{{ t.name }} ({{ t.abbreviation }})</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Số văn bản</label>
+        <input
+          type="text"
+          disabled
+          class="readonly-input"
+          [value]="codeNumber() || 'Tự động cấp khi lưu'"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="issuedDate">Ngày ban hành <span class="required">*</span></label>
+        <input
+          id="issuedDate"
+          name="issuedDate"
+          type="date"
+          required
+          [(ngModel)]="issuedDate"
+          (ngModelChange)="onNumberingChange()"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="dueDate">Hạn xử lý</label>
+        <input id="dueDate" name="dueDate" type="date" [(ngModel)]="dueDate" />
+      </div>
+
+      <div class="form-group">
+        <label for="priority">Mức độ khẩn</label>
+        <select id="priority" name="priority" [(ngModel)]="priority">
+          <option [ngValue]="0">0 - Thường</option>
+          <option [ngValue]="1">1 - Khẩn</option>
+          <option [ngValue]="2">2 - Thượng khẩn</option>
+          <option [ngValue]="3">3 - Hỏa tốc</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="issuedAmount">Số bản phát hành</label>
+        <input
+          id="issuedAmount"
+          name="issuedAmount"
+          type="number"
+          min="1"
+          max="999"
+          [(ngModel)]="issuedAmount"
+        />
+      </div>
+    </div>
+
+    <!-- Nhóm 2: Nội dung văn bản -->
+    <div class="section-title">2. Thông tin văn bản &amp; Tệp đính kèm</div>
+    <div class="form-grid cols-4">
+      <div class="form-group">
+        <label for="codeNotation">Ký hiệu văn bản <span class="required">*</span></label>
+        <input
+          id="codeNotation"
+          name="codeNotation"
+          type="text"
+          maxlength="30"
+          required
+          placeholder="Ví dụ: /QĐ-NB"
+          [(ngModel)]="codeNotation"
+          (input)="notationTouched = true"
+        />
+        <small class="hint">Hệ thống gợi ý theo loại văn bản, bạn có thể sửa</small>
+      </div>
+
+      <div class="form-group span-2">
+        <label>Cơ quan ban hành</label>
+        <input type="text" disabled class="readonly-input" [value]="organName()" />
+      </div>
+
+      <div class="form-group">
+        <label>Nơi nhận</label>
+        <input type="text" disabled class="readonly-input" [value]="organName()" />
+        <small class="hint">Văn bản nội bộ gửi cho chính cơ quan</small>
+      </div>
+
+      <div class="form-group">
+        <label for="signerFullName">Họ tên người ký</label>
+        <input
+          id="signerFullName"
+          name="signerFullName"
+          type="text"
+          maxlength="50"
+          [(ngModel)]="signerFullName"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="signerPosition">Chức vụ người ký</label>
+        <input
+          id="signerPosition"
+          name="signerPosition"
+          type="text"
+          maxlength="100"
+          [(ngModel)]="signerPosition"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="language">Ngôn ngữ</label>
+        <input id="language" name="language" type="text" maxlength="30" [(ngModel)]="language" />
+      </div>
+
+      <div class="form-group">
+        <label for="pageAmount">Số trang</label>
+        <input
+          id="pageAmount"
+          name="pageAmount"
+          type="number"
+          min="1"
+          max="999"
+          [(ngModel)]="pageAmount"
+        />
+      </div>
+
+      <div class="form-group span-4">
+        <label for="subject">Trích yếu nội dung <span class="required">*</span></label>
+        <textarea
+          id="subject"
+          name="subject"
+          rows="2"
+          maxlength="500"
+          required
+          placeholder="Nhập trích yếu nội dung văn bản..."
+          [(ngModel)]="subject"
+        ></textarea>
+      </div>
+
+      <div class="form-group span-2">
+        <label for="attachmentFile">Tệp đính kèm (PDF, Word, ảnh...)</label>
+        <input id="attachmentFile" type="file" (change)="onFileSelected($event)" />
+        @if (existingAttachmentName() && !selectedFile) {
+          <small class="hint">
+            Đang có tệp:
+            <a [href]="docService.getAttachmentUrl(editingId()!)" target="_blank">
+              &#128206; {{ existingAttachmentName() }}
+            </a>
+          </small>
+        }
+      </div>
+
+      <div class="form-group span-2">
+        <label for="description">Ghi chú</label>
+        <input
+          id="description"
+          name="description"
+          type="text"
+          maxlength="500"
+          [(ngModel)]="description"
+        />
+      </div>
+    </div>
+
+    <!-- Nút điều khiển -->
+    <div class="form-footer">
+      <a routerLink="/documents/internal" class="btn-secondary">Hủy bỏ</a>
+
+      <button
+        type="submit"
+        class="btn-primary"
+        [disabled]="docForm.invalid || submitting() || locked()"
+      >
+        {{ submitting() ? 'Đang xử lý...' : isEditMode() ? 'Cập nhật' : 'Lưu đăng ký & cấp số' }}
+      </button>
+
+      @if (!isEditMode()) {
+        <button
+          type="button"
+          class="btn-primary"
+          [disabled]="docForm.invalid || submitting()"
+          (click)="saveDocument(true)"
+        >
+          {{ submitting() ? 'Đang xử lý...' : 'Đăng ký & Ban hành ngay' }}
+        </button>
+      }
+    </div>
+  </form>
+}
