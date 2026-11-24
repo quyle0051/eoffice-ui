@@ -9,7 +9,7 @@ export interface UserInfo {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-    private readonly api = 'http://localhost:8080/api/auth';
+    private readonly api = '/api/auth';
 
     readonly user = signal<UserInfo | null>(null);
 
