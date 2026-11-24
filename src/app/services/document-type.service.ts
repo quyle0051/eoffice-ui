@@ -11,7 +11,7 @@ export interface DocumentTypeResponse {
 
 @Injectable({ providedIn: 'root' })
 export class DocumentTypeService {
-    private readonly api = 'http://localhost:8080/api/document-types';
+    private readonly api = '/api/document-types';
 
     constructor(private http: HttpClient) { }
 

@@ -35,6 +35,9 @@ export const routes: Routes = [
             { path: 'documents/outgoing', component: OutgoingDocuments },
             { path: 'documents/outgoing/new', component: OutgoingDocumentForm },
             { path: 'documents/outgoing/:id/edit', component: OutgoingDocumentForm },
+            { path: 'documents/internal', component: InternalDocuments },
+            { path: 'documents/internal/new', component: InternalDocumentForm },
+            { path: 'documents/internal/:id/edit', component: InternalDocumentForm },
             todo('case-files', 'Hồ sơ lưu trữ', 'Quản lý văn bản'),
 
 

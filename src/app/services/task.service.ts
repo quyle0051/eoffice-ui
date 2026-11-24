@@ -99,7 +99,7 @@ export interface SubTaskCreateRequest {
 
 @Injectable({ providedIn: 'root' })
 export class TaskService {
-    private readonly api = 'http://localhost:8080/api/tasks';
+    private readonly api = '/api/tasks';
 
     constructor(private http: HttpClient) { }
 

@@ -81,7 +81,7 @@ export interface OutgoingDocumentResponse {
 
 @Injectable({ providedIn: 'root' })
 export class OutgoingDocumentService {
-    private readonly api = 'http://localhost:8080/api/outgoing-documents';
+    private readonly api = '/api/outgoing-documents';
 
     constructor(private http: HttpClient) { }
 

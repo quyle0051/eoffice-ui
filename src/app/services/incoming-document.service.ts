@@ -172,7 +172,7 @@ export interface IncomingDispatchRequest {
 
 @Injectable({ providedIn: 'root' })
 export class IncomingDocumentService {
-    private readonly api = 'http://localhost:8080/api/incoming-documents';
+    private readonly api = '/api/incoming-documents';
 
     constructor(private http: HttpClient) { }
 

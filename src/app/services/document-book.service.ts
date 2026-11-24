@@ -20,7 +20,7 @@ export interface DocumentBookResponse {
 
 @Injectable({ providedIn: 'root' })
 export class DocumentBookService {
-    private readonly api = 'http://localhost:8080/api/document-books';
+    private readonly api = '/api/document-books';
 
     constructor(private http: HttpClient) { }
 
