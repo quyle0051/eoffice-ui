@@ -1,11 +1,19 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
+export type DocumentBookTypeCode = 'INCOMING' | 'OUTGOING' | 'INTERNAL';
+
+export interface DocumentBookTypeResponse {
+    id: number;
+    code: DocumentBookTypeCode;
+    name: string;
+}
 
 export interface DocumentBookRequest {
     name: string;
     shortName?: string | null;
-    standardDays?: number | null;
+    bookTypeId: number;
     parentId?: number | null;
 }
 
@@ -13,19 +21,30 @@ export interface DocumentBookResponse {
     id: number;
     name: string;
     shortName: string | null;
-    standardDays: number | null;
     parentId: number | null;
     parentName: string | null;
+    bookTypeId: number;
+    bookTypeCode: DocumentBookTypeCode;
+    bookTypeName: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class DocumentBookService {
     private readonly api = '/api/document-books';
+    private readonly typeApi = '/api/document-book-types';
 
     constructor(private http: HttpClient) { }
 
-    findAll(): Observable<DocumentBookResponse[]> {
-        return this.http.get<DocumentBookResponse[]>(this.api, { withCredentials: true });
+    findAll(typeCode?: DocumentBookTypeCode): Observable<DocumentBookResponse[]> {
+        let params = new HttpParams();
+        if (typeCode) {
+            params = params.set('type', typeCode);
+        }
+        return this.http.get<DocumentBookResponse[]>(this.api, { params, withCredentials: true });
+    }
+
+    findTypes(): Observable<DocumentBookTypeResponse[]> {
+        return this.http.get<DocumentBookTypeResponse[]>(this.typeApi, { withCredentials: true });
     }
 
     findById(id: number): Observable<DocumentBookResponse> {

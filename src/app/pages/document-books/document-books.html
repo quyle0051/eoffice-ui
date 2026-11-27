@@ -11,13 +11,22 @@
 
 <!-- Thanh công cụ -->
 <div class="toolbar">
-  <input
-    type="text"
-    class="search-input"
-    placeholder="Tìm theo tên sổ, tên viết tắt, sổ cha..."
-    [ngModel]="keyword()"
-    (ngModelChange)="keyword.set($event)"
-  />
+  <div class="toolbar-left">
+    <input
+      type="text"
+      class="search-input"
+      placeholder="Tìm theo tên sổ, tên viết tắt, sổ cha..."
+      [ngModel]="keyword()"
+      (ngModelChange)="keyword.set($event)"
+    />
+
+    <select class="type-select" [ngModel]="typeFilter()" (ngModelChange)="typeFilter.set($event)">
+      <option value="">-- Tất cả loại sổ --</option>
+      @for (t of bookTypes(); track t.id) {
+        <option [value]="t.code">{{ t.name }}</option>
+      }
+    </select>
+  </div>
 
   <button type="button" class="btn-primary" (click)="openCreateModal()">
     + Thêm sổ văn bản
@@ -42,19 +51,20 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th style="width: 60px">ID</th>
             <th>Tên sổ văn bản</th>
+            <th style="width: 170px">Loại sổ</th>
             <th style="width: 150px">Tên viết tắt</th>
             <th>Sổ cha</th>
-            <!-- <th style="width: 160px; text-align: center">Số ngày xử lý chuẩn</th> -->
             <th style="width: 150px; text-align: right">Thao tác</th>
           </tr>
         </thead>
         <tbody>
           @for (b of filteredBooks(); track b.id) {
             <tr>
-              <td class="text-muted">#{{ b.id }}</td>
               <td class="font-semibold">{{ b.name }}</td>
+              <td>
+                <span class="type-badge" [attr.data-type]="b.bookTypeCode">{{ b.bookTypeName }}</span>
+              </td>
               <td>
                 @if (b.shortName) {
                   <span class="badge">{{ b.shortName }}</span>
@@ -62,14 +72,7 @@
                   <span class="text-muted">—</span>
                 }
               </td>
-              <td>{{ b.parentName ?? '(Sổ gốc)' }}</td>
-              <!-- <td style="text-align: center">
-                @if (b.standardDays !== null && b.standardDays !== undefined) {
-                  {{ b.standardDays }} ngày
-                } @else {
-                  <span class="text-muted">—</span>
-                }
-              </td> -->
+              <td>{{ b.parentName ?? '— (Sổ gốc)' }}</td>
               <td class="actions">
                 <button type="button" class="btn-action edit" (click)="openEditModal(b)">
                   Sửa
@@ -86,10 +89,10 @@
   }
 </div>
 
-<!-- Modal Thêm / Cập nhật -->
+<!-- Hộp thoại Thêm / Cập nhật -->
 @if (showModal()) {
-  <div class="modal-backdrop" (click)="closeModal()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop" (mousedown)="$event.target === $event.currentTarget ? closeModal() : null">
+    <div class="modal-card">
       <div class="modal-header">
         <h3>{{ editingId() ? 'Cập nhật sổ văn bản' : 'Thêm sổ văn bản mới' }}</h3>
         <button type="button" class="close-btn" (click)="closeModal()">&times;</button>
@@ -106,10 +109,27 @@
             required
             placeholder="Ví dụ: Sổ văn bản đến năm 2026"
             [(ngModel)]="formName"
+            #nameInput
           />
         </div>
 
         <div class="form-row">
+          <div class="form-group">
+            <label for="bookTypeId">Loại sổ <span class="required">*</span></label>
+            <select
+              id="bookTypeId"
+              name="bookTypeId"
+              required
+              [(ngModel)]="formBookTypeId"
+              (ngModelChange)="onTypeChange()"
+            >
+              <option [ngValue]="null">-- Chọn loại sổ --</option>
+              @for (t of bookTypes(); track t.id) {
+                <option [ngValue]="t.id">{{ t.name }}</option>
+              }
+            </select>
+          </div>
+
           <div class="form-group">
             <label for="shortName">Tên viết tắt</label>
             <input
@@ -121,28 +141,17 @@
               [(ngModel)]="formShortName"
             />
           </div>
-
-          <div class="form-group">
-            <label for="standardDays">Số ngày xử lý chuẩn</label>
-            <input
-              id="standardDays"
-              name="standardDays"
-              type="number"
-              min="0"
-              placeholder="Ví dụ: 7"
-              [(ngModel)]="formStandardDays"
-            />
-          </div>
         </div>
 
         <div class="form-group">
           <label for="parentId">Sổ cha (nếu có)</label>
-          <select id="parentId" name="parentId" [(ngModel)]="formParentId">
+          <select id="parentId" name="parentId" [(ngModel)]="formParentId" [disabled]="!formBookTypeId">
             <option [ngValue]="null">-- Không có (Sổ gốc) --</option>
             @for (p of parentOptions(); track p.id) {
               <option [ngValue]="p.id">{{ p.name }}</option>
             }
           </select>
+          <small class="hint">Sổ cha phải cùng loại sổ</small>
         </div>
 
         @if (modalError()) {

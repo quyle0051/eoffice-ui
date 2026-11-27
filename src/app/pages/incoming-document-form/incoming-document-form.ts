@@ -89,7 +89,7 @@ export class IncomingDocumentForm implements OnInit {
     }
 
     loadMetadata() {
-        this.bookService.findAll().subscribe({
+        this.bookService.findAll('INCOMING').subscribe({
             next: (data) => this.books.set(data),
         });
         this.typeService.findAll().subscribe({
@@ -181,15 +181,15 @@ export class IncomingDocumentForm implements OnInit {
         }
     }
 
-    onBookOrArrivalDateChange() {
-        if (this.isEditMode() || this.dueDate) return;
-        const book = this.books().find((b) => b.id === Number(this.documentBookId));
-        if (book && book.standardDays != null && this.arrivalDate) {
-            const baseDate = new Date(this.arrivalDate);
-            baseDate.setDate(baseDate.getDate() + book.standardDays);
-            this.dueDate = baseDate.toISOString().slice(0, 10);
-        }
-    }
+    // onBookOrArrivalDateChange() {
+    //     if (this.isEditMode() || this.dueDate) return;
+    //     const book = this.books().find((b) => b.id === Number(this.documentBookId));
+    //     if (book && book.standardDays != null && this.arrivalDate) {
+    //         const baseDate = new Date(this.arrivalDate);
+    //         baseDate.setDate(baseDate.getDate() + book.standardDays);
+    //         this.dueDate = baseDate.toISOString().slice(0, 10);
+    //     }
+    // }
 
     /**
      * @param forwardToLeader true = Lưu vào sổ VÀ trình Chánh văn phòng luôn

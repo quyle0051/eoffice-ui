@@ -13,6 +13,7 @@ import { OutgoingDocuments } from './pages/outgoing-documents/outgoing-documents
 import { OutgoingDocumentForm } from './pages/outgoing-document-form/outgoing-document-form';
 import { InternalDocuments } from './pages/internal-documents/internal-documents';
 import { InternalDocumentForm } from './pages/internal-document-form/internal-document-form';
+import { TaskGroups } from './pages/task-groups/task-groups';
 
 const todo = (path: string, title: string, group: string) => ({
     path,
@@ -48,7 +49,7 @@ export const routes: Routes = [
             { path: 'tasks/supervised', component: TaskList },
             { path: 'tasks/created', component: TaskList },
             { path: 'tasks/:id', component: TaskDetail },
-            todo('task-groups', 'Nhóm công việc', 'Công việc'),
+            { path: 'task-groups', component: TaskGroups },
 
             // Danh mục
             { path: 'document-books', component: DocumentBooks },

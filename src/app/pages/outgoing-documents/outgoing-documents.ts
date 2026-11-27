@@ -15,7 +15,7 @@ import {
     templateUrl: './outgoing-documents.html',
     styleUrl: './outgoing-documents.css',
 })
-export class OutgoingDocuments implements OnInit {
+export class OutgoingDocuments implements OnInit, OnDestroy {
     // Danh mục lọc
     books = signal<DocumentBookResponse[]>([]);
     types = signal<DocumentTypeResponse[]>([]);
@@ -68,12 +68,7 @@ export class OutgoingDocuments implements OnInit {
     ) { }
 
     ngOnInit() {
-        this.bookService.findAll().subscribe({
-            next: (allBooks) => {
-                const outBooks = allBooks.filter((b: any) => !b.type || b.type === 'OUTGOING');
-                this.books.set(outBooks.length > 0 ? outBooks : allBooks);
-            },
-        });
+        this.bookService.findAll('OUTGOING').subscribe({ next: (list) => this.books.set(list) });
 
         this.typeService.findAll().subscribe({
             next: (list) => this.types.set(list),

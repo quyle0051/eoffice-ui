@@ -28,14 +28,11 @@
           required
           [disabled]="isEditMode()"
           [(ngModel)]="documentBookId"
-          (ngModelChange)="onBookOrArrivalDateChange()"
         >
           <option [ngValue]="null">-- Chọn sổ văn bản --</option>
-          @for (b of books(); track b.id) {
-            <option [ngValue]="b.id">
-              {{ b.name }} {{ b.standardDays != null ? '(' + b.standardDays + ' ngày)' : '' }}
-            </option>
-          }
+            @for (b of books(); track b.id) {
+              <option [ngValue]="b.id">{{ b.name }}</option>
+            }
         </select>
       </div>
 
@@ -71,7 +68,6 @@
           name="arrivalDate"
           type="date"
           [(ngModel)]="arrivalDate"
-          (ngModelChange)="onBookOrArrivalDateChange()"
         />
       </div>
 

@@ -5,6 +5,7 @@ import {
     DocumentBookRequest,
     DocumentBookResponse,
     DocumentBookService,
+    DocumentBookTypeResponse,
 } from '../../services/document-book.service';
 
 @Component({
@@ -15,9 +16,11 @@ import {
 })
 export class DocumentBooks implements OnInit {
     books = signal<DocumentBookResponse[]>([]);
+    bookTypes = signal<DocumentBookTypeResponse[]>([]);
     loading = signal(false);
     keyword = signal('');
     pageError = signal('');
+    typeFilter = signal('');
 
     // Trạng thái Modal Thêm/Sửa
     showModal = signal(false);
@@ -28,30 +31,63 @@ export class DocumentBooks implements OnInit {
     // Dữ liệu form
     formName = '';
     formShortName = '';
-    formStandardDays: number | null = null;
+    formBookTypeId: number | null = null;
     formParentId: number | null = null;
 
     // Danh sách đã lọc theo từ khóa
     filteredBooks = computed(() => {
         const kw = this.keyword().trim().toLowerCase();
-        if (!kw) return this.books();
-        return this.books().filter(
-            (b) =>
+        const type = this.typeFilter();
+        return this.books().filter((b) => {
+            if (type && b.bookTypeCode !== type) return false;
+            if (!kw) return true;
+            return (
                 b.name.toLowerCase().includes(kw) ||
                 (b.shortName && b.shortName.toLowerCase().includes(kw)) ||
-                (b.parentName && b.parentName.toLowerCase().includes(kw))
-        );
+                (b.parentName && b.parentName.toLowerCase().includes(kw)) ||
+                b.bookTypeName.toLowerCase().includes(kw)
+            );
+        });
     });
 
     // Danh sách sổ cha hợp lệ (không bao gồm chính sổ đang sửa)
-    parentOptions = computed(() => {
+    parentOptions(): DocumentBookResponse[] {
         const currentId = this.editingId();
-        return this.books().filter((b) => b.id !== currentId);
-    });
+        const excluded = currentId ? this.descendantIds(currentId) : new Set<number>();
+        return this.books().filter(
+            (b) =>
+                b.id !== currentId &&
+                !excluded.has(b.id) &&
+                this.formBookTypeId !== null &&
+                b.bookTypeId === Number(this.formBookTypeId)
+        );
+    }
 
+    private descendantIds(rootId: number): Set<number> {
+        const result = new Set<number>();
+        const queue = [rootId];
+        while (queue.length > 0) {
+            const current = queue.shift()!;
+            for (const b of this.books()) {
+                if (b.parentId === current && !result.has(b.id)) {
+                    result.add(b.id);
+                    queue.push(b.id);
+                }
+            }
+        }
+        return result;
+    }
+
+    onTypeChange() {
+        this.formParentId = null;
+    }
     constructor(private bookService: DocumentBookService) { }
 
     ngOnInit() {
+        this.bookService.findTypes().subscribe({
+            next: (types) => this.bookTypes.set(types),
+            error: (err) => this.pageError.set(err.error?.message ?? 'Không thể tải danh sách loại sổ'),
+        });
         this.loadBooks();
     }
 
@@ -74,20 +110,23 @@ export class DocumentBooks implements OnInit {
         this.editingId.set(null);
         this.formName = '';
         this.formShortName = '';
-        this.formStandardDays = null;
+        const filtered = this.bookTypes().find((t) => t.code === this.typeFilter());
+        this.formBookTypeId = filtered ? filtered.id : null;
         this.formParentId = null;
         this.modalError.set('');
         this.showModal.set(true);
+        setTimeout(() => document.getElementById('bookName')?.focus());
     }
 
     openEditModal(book: DocumentBookResponse) {
         this.editingId.set(book.id);
         this.formName = book.name;
         this.formShortName = book.shortName ?? '';
-        this.formStandardDays = book.standardDays;
+        this.formBookTypeId = book.bookTypeId;
         this.formParentId = book.parentId;
         this.modalError.set('');
         this.showModal.set(true);
+        setTimeout(() => document.getElementById('bookName')?.focus());
     }
 
     closeModal() {
@@ -102,12 +141,15 @@ export class DocumentBooks implements OnInit {
             return;
         }
 
+        if (!this.formBookTypeId) {
+            this.modalError.set('Vui lòng chọn loại sổ');
+            return;
+        }
+
         const payload: DocumentBookRequest = {
             name: trimmedName,
             shortName: this.formShortName.trim() ? this.formShortName.trim() : null,
-            standardDays: this.formStandardDays !== null && this.formStandardDays !== undefined
-                ? Number(this.formStandardDays)
-                : null,
+            bookTypeId: Number(this.formBookTypeId),
             parentId: this.formParentId ? Number(this.formParentId) : null,
         };
 

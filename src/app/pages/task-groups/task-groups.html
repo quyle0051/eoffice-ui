@@ -1,0 +1,202 @@
+<div class="page-header">
+  <h2>Nhóm công việc</h2>
+  <div class="breadcrumb">
+    <a routerLink="/home">Tổng quan</a>
+    <span>/</span>
+    <span>Công việc</span>
+    <span>/</span>
+    <span class="current">Nhóm công việc</span>
+  </div>
+</div>
+
+<!-- Thanh công cụ -->
+<div class="toolbar">
+  <div class="toolbar-left">
+    <input
+      type="text"
+      class="search-input"
+      placeholder="Tìm theo tên nhóm hoặc mô tả..."
+      [ngModel]="keyword"
+      (ngModelChange)="onKeywordInput($event)"
+    />
+  </div>
+
+  @if (canCreate()) {
+    <button type="button" class="btn-primary" (click)="openCreateModal()">
+      + Tạo nhóm công việc
+    </button>
+  }
+</div>
+
+@if (pageError()) {
+  <div class="alert-error">{{ pageError() }}</div>
+}
+
+<!-- Bảng danh sách nhóm -->
+<div class="card">
+  @if (loading()) {
+    <div class="empty-state">Đang tải dữ liệu...</div>
+  } @else if (groups().length === 0) {
+    <div class="empty-state">
+      <p class="empty-title">Chưa có nhóm công việc nào</p>
+      @if (canCreate()) {
+        <p class="empty-hint">Nhấn "+ Tạo nhóm công việc" để tạo nhóm mới.</p>
+      } @else {
+        <p class="empty-hint">Bạn chưa là thành viên của nhóm công việc nào.</p>
+      }
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 60px">ID</th>
+            <th style="width: 240px">Tên nhóm</th>
+            <th>Mô tả</th>
+            <th style="width: 140px">Thành viên</th>
+            <th style="width: 170px">Người tạo</th>
+            <th style="width: 110px">Ngày tạo</th>
+            <th style="width: 150px; text-align: right">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (g of groups(); track g.id) {
+            <tr>
+              <td class="text-muted">#{{ g.id }}</td>
+              <td class="font-semibold">{{ g.name }}</td>
+              <td class="desc-text">{{ g.description || '—' }}</td>
+              <td>
+                <button type="button" class="member-count-btn" (click)="toggleExpand(g.id)">
+                  {{ g.memberCount }} thành viên {{ expandedId() === g.id ? '▲' : '▼' }}
+                </button>
+              </td>
+              <td>{{ g.creatorName || '—' }}</td>
+              <td>{{ formatDate(g.createdAt) }}</td>
+              <td class="actions">
+                @if (g.canManage) {
+                  <button type="button" class="btn-action edit" (click)="openEditModal(g)">Sửa</button>
+                  <button type="button" class="btn-action delete" (click)="deleteGroup(g)">Xóa</button>
+                }
+              </td>
+            </tr>
+            @if (expandedId() === g.id) {
+              <tr class="expand-row">
+                <td colspan="7">
+                  @if (g.members.length === 0) {
+                    <span class="text-muted">Nhóm chưa có thành viên</span>
+                  } @else {
+                    <div class="member-chips">
+                      @for (m of g.members; track m.id) {
+                        <span class="member-chip">
+                          {{ m.fullName }}
+                          @if (m.departmentName) {
+                            <small>({{ m.departmentName }})</small>
+                          }
+                        </span>
+                      }
+                    </div>
+                  }
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<!-- Hộp thoại Tạo / Cập nhật nhóm -->
+@if (showModal()) {
+  <div class="modal-backdrop" (mousedown)="$event.target === $event.currentTarget ? closeModal() : null">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>{{ editingId() ? 'Cập nhật nhóm công việc' : 'Tạo nhóm công việc mới' }}</h3>
+        <button type="button" class="close-btn" (click)="closeModal()">&times;</button>
+      </div>
+
+      <form (ngSubmit)="saveGroup()" #groupForm="ngForm" class="modal-body">
+        <div class="form-group">
+          <label for="groupName">Tên nhóm <span class="required">*</span></label>
+          <input
+            id="groupName"
+            name="name"
+            type="text"
+            maxlength="255"
+            required
+            placeholder="Ví dụ: Nhóm chuyển đổi số"
+            [(ngModel)]="formName"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="groupDescription">Mô tả</label>
+          <textarea
+            id="groupDescription"
+            name="description"
+            rows="2"
+            maxlength="500"
+            placeholder="Nhóm phụ trách việc gì..."
+            [(ngModel)]="formDescription"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <div class="picker-title">
+            <span>Thành viên nhóm ({{ selectedCount() }} đã chọn)</span>
+            @if (selectedCount() > 0) {
+              <button type="button" class="link-clear" (click)="clearSelection()">Bỏ chọn tất cả</button>
+            }
+          </div>
+
+          <input
+            type="text"
+            class="member-search"
+            name="memberSearch"
+            placeholder="Tìm theo tên, email hoặc phòng ban..."
+            [ngModel]="memberKeyword()"
+            (ngModelChange)="memberKeyword.set($event)"
+          />
+
+          <div class="member-list">
+            @if (loadingMembers()) {
+              <div class="empty-state">Đang tải danh sách người dùng...</div>
+            } @else if (filteredOptions().length === 0) {
+              <div class="empty-state">Không có người dùng phù hợp</div>
+            } @else {
+              @for (u of filteredOptions(); track u.id) {
+                <label class="member-row">
+                  <input
+                    type="checkbox"
+                    [checked]="isSelected(u.id)"
+                    (change)="toggleMember(u.id, $any($event.target).checked)"
+                  />
+                  <div>
+                    <strong>{{ u.fullName }}</strong>
+                    <div class="sub-info">{{ u.email }} · {{ u.departmentName || 'Chưa có phòng ban' }}</div>
+                  </div>
+                </label>
+              }
+            }
+          </div>
+          <div class="picker-note">
+            Nhóm này sẽ xuất hiện trong danh sách nhóm khi Văn thư phân phối văn bản và khi chia việc.
+          </div>
+        </div>
+
+        @if (modalError()) {
+          <div class="alert-error modal-alert">{{ modalError() }}</div>
+        }
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" (click)="closeModal()" [disabled]="submitting()">
+            Hủy
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="groupForm.invalid || submitting()">
+            {{ submitting() ? 'Đang lưu...' : 'Lưu lại' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

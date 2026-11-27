@@ -71,10 +71,8 @@ export class OutgoingDocumentForm implements OnInit {
         }
 
         // Lọc các Sổ văn bản đi (hoặc lấy tất cả sổ nếu chưa phân loại)
-        this.bookService.findAll().subscribe({
-            next: (allBooks) => {
-                const outBooks = allBooks.filter((b: any) => !b.type || b.type === 'OUTGOING');
-                const list = outBooks.length > 0 ? outBooks : allBooks;
+        this.bookService.findAll('OUTGOING').subscribe({
+            next: (list) => {
                 this.books.set(list);
                 if (!this.editId() && list.length > 0) {
                     this.documentBookId = list[0].id;

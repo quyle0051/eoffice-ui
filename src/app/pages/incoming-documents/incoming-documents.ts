@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
@@ -30,7 +30,7 @@ export type WorkflowActionType =
     templateUrl: './incoming-documents.html',
     styleUrl: './incoming-documents.css',
 })
-export class IncomingDocuments implements OnInit {
+export class IncomingDocuments implements OnInit, OnDestroy {
 
     wfTaskGroupId: number | null = null;
     wfSupervisorId: number | null = null;
@@ -124,7 +124,7 @@ export class IncomingDocuments implements OnInit {
     }
 
     loadFilterMetadata() {
-        this.bookService.findAll().subscribe({ next: (data) => this.books.set(data) });
+        this.bookService.findAll('INCOMING').subscribe({ next: (data) => this.books.set(data) });
         this.typeService.findAll().subscribe({ next: (data) => this.types.set(data) });
         this.docService.getDispatchOptions().subscribe({
             next: (opts) => this.dispatchOptions.set(opts),

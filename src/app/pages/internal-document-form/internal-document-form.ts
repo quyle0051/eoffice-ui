@@ -68,7 +68,7 @@ export class InternalDocumentForm implements OnInit {
     ) { }
 
     ngOnInit() {
-        this.bookService.findAll().subscribe({ next: (list) => this.books.set(list) });
+        this.bookService.findAll('INTERNAL').subscribe({ next: (list) => this.books.set(list) });
         this.typeService.findAll().subscribe({ next: (list) => this.types.set(list) });
 
         const idParam = this.route.snapshot.paramMap.get('id');
